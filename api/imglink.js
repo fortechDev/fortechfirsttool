@@ -2,7 +2,7 @@
    FORTECH FIRST TOOLS — API: File to Link
    Endpoint : POST /api/imglink
    Body     : { filename, mime, base64 }
-   Provider : Catbox + Telegra.ph + 0x0.st (paralel)
+   Provider : Catbox + Telegra.ph + 0x0.st + OnlyFiles (paralel)
    ============================================================ */
 
 const MAX_SIZE = 4 * 1024 * 1024;
@@ -23,23 +23,15 @@ function withTimeout(ms) {
   return { signal: ctrl.signal, clear: () => clearTimeout(t) };
 }
 
-/* ============================================================
-   PROVIDER 1 — Catbox.moe
-   ============================================================ */
 async function uploadCatbox(buffer, filename, mime) {
   const form = new FormData();
   form.append('reqtype', 'fileupload');
   form.append('fileToUpload', new Blob([buffer], { type: mime }), filename);
-
   const t = withTimeout(TIMEOUT_MS);
   try {
     const res = await fetch('https://catbox.moe/user/api.php', {
       method: 'POST',
-      headers: {
-        'User-Agent': BROWSER_UA,
-        'Accept': '*/*',
-        'Referer': 'https://catbox.moe/'
-      },
+      headers: { 'User-Agent': BROWSER_UA, 'Accept': '*/*', 'Referer': 'https://catbox.moe/' },
       body: form,
       signal: t.signal
     });
@@ -50,32 +42,22 @@ async function uploadCatbox(buffer, filename, mime) {
   } finally { t.clear(); }
 }
 
-/* ============================================================
-   PROVIDER 2 — Telegra.ph
-   ============================================================ */
 async function uploadTelegraph(buffer, filename, mime) {
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: mime }), filename);
-
   const t = withTimeout(TIMEOUT_MS);
   try {
     const res = await fetch('https://telegra.ph/upload', {
       method: 'POST',
-      headers: {
-        'User-Agent': BROWSER_UA,
-        'Accept': '*/*',
-        'Referer': 'https://telegra.ph/'
-      },
+      headers: { 'User-Agent': BROWSER_UA, 'Accept': '*/*', 'Referer': 'https://telegra.ph/' },
       body: form,
       signal: t.signal
     });
     const text = await res.text();
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
-
     let json;
     try { json = JSON.parse(text); }
     catch { throw new Error('Response bukan JSON: ' + text.slice(0, 100)); }
-
     if (!Array.isArray(json) || !json[0] || !json[0].src) {
       throw new Error((json && (json.error || (json[0] && json[0].error))) || 'Response tidak valid');
     }
@@ -83,21 +65,14 @@ async function uploadTelegraph(buffer, filename, mime) {
   } finally { t.clear(); }
 }
 
-/* ============================================================
-   PROVIDER 3 — 0x0.st
-   ============================================================ */
 async function upload0x0(buffer, filename, mime) {
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: mime }), filename);
-
   const t = withTimeout(TIMEOUT_MS);
   try {
     const res = await fetch('https://0x0.st', {
       method: 'POST',
-      headers: {
-        'User-Agent': 'FortechTools/1.0 (+https://fortech.dev)',
-        'Accept': '*/*'
-      },
+      headers: { 'User-Agent': 'FortechTools/1.0 (+https://fortech.dev)', 'Accept': '*/*' },
       body: form,
       signal: t.signal
     });
@@ -108,9 +83,30 @@ async function upload0x0(buffer, filename, mime) {
   } finally { t.clear(); }
 }
 
-/* ============================================================
-   HANDLER
-   ============================================================ */
+async function uploadOnlyFiles(buffer, filename, mime) {
+  const form = new FormData();
+  form.append('file', new Blob([buffer], { type: mime }), filename);
+  form.append('expire', '0');
+  const t = withTimeout(TIMEOUT_MS);
+  try {
+    const res = await fetch('https://api.onlyfiles.com/v1/upload', {
+      method: 'POST',
+      headers: { 'User-Agent': BROWSER_UA, 'Accept': 'application/json', 'Referer': 'https://onlyfiles.com/' },
+      body: form,
+      signal: t.signal
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
+    let json;
+    try { json = JSON.parse(text); }
+    catch { throw new Error('Response bukan JSON: ' + text.slice(0, 100)); }
+    if (!json.status || !json.data || !json.data.file || !json.data.file.url) {
+      throw new Error((json.error && json.error.message) || 'Response tidak valid');
+    }
+    return json.data.file.url.full || json.data.file.url.short;
+  } finally { t.clear(); }
+}
+
 module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -138,7 +134,8 @@ module.exports = async function handler(req, res) {
     const tasks = [
       { provider: 'catbox',    label: 'Catbox',     fn: uploadCatbox },
       { provider: 'telegraph', label: 'Telegra.ph', fn: uploadTelegraph },
-      { provider: '0x0',       label: '0x0.st',     fn: upload0x0 }
+      { provider: '0x0',       label: '0x0.st',     fn: upload0x0 },
+      { provider: 'onlyfiles', label: 'OnlyFiles',  fn: uploadOnlyFiles }
     ];
 
     const results = await Promise.all(tasks.map(async (t) => {
