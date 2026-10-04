@@ -2,7 +2,7 @@
    FORTECH FIRST TOOLS — API: Free Fire Stalker
    Endpoint : POST /api/stalk-ff
    Body     : { uid, region }
-   Metode   : Multi-provider fallback
+   Providers: PRINCE-LKTEAM (Render) + jinix6/0xMe (Render)
    ============================================================ */
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
@@ -18,110 +18,145 @@ function setCors(res) {
 /* ---------- Normalisasi region ---------- */
 function normalizeRegion(str) {
   const s = String(str || '').toUpperCase();
-  if (s.includes('ID') || s.includes('INDONESIA')) return 'id';
-  if (s.includes('MY') || s.includes('MALAYSIA')) return 'my';
-  if (s.includes('SG') || s.includes('SINGAPORE')) return 'sg';
-  if (s.includes('BR') || s.includes('BRAZIL')) return 'br';
-  if (s.includes('IN') || s.includes('INDIA')) return 'ind';
-  return 'id';
+  if (s.includes('ID') || s.includes('INDONESIA')) return 'ID';
+  if (s.includes('MY') || s.includes('MALAYSIA')) return 'MY';
+  if (s.includes('SG') || s.includes('SINGAPORE')) return 'SG';
+  if (s.includes('BR') || s.includes('BRAZIL')) return 'BR';
+  if (s.includes('IN') || s.includes('INDIA')) return 'IND';
+  if (s.includes('TH') || s.includes('THAILAND')) return 'TH';
+  if (s.includes('VN') || s.includes('VIETNAM')) return 'VN';
+  if (s.includes('PH') || s.includes('PHILIPPINES')) return 'PH';
+  if (s.includes('PK') || s.includes('PAKISTAN')) return 'PK';
+  if (s.includes('BD') || s.includes('BANGLADESH')) return 'BD';
+  if (s.includes('ME') || s.includes('MIDDLE')) return 'ME';
+  if (s.includes('CIS')) return 'CIS';
+  if (s.includes('RU') || s.includes('RUSSIA')) return 'RU';
+  if (s.includes('TW') || s.includes('TAIWAN')) return 'TW';
+  if (s.includes('US') || s.includes('UNITED')) return 'US';
+  return 'ID';
+}
+
+/* ---------- Fetch dengan timeout ---------- */
+async function fetchWithTimeout(url, ms = 20000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': UA, 'Accept': 'application/json' },
+      signal: ctrl.signal
+    });
+    return res;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/* ---------- Helper angka ---------- */
+function num(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /* ============================================================
-   PROVIDER 1 — freefirecommunity.com API
+   PROVIDER 1 — PRINCE-LKTEAM Free Fire API (Render)
+   Base: https://freefireinfo-zy9l.onrender.com
+   Endpoint: /api/v1/player-profile?uid={uid}&server={region}
    ============================================================ */
-async function providerFFC(uid, region) {
-  const url = `https://freefirecommunity.com/api/ff-info?region=${region}&uid=${encodeURIComponent(uid)}`;
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'application/json',
-      'Referer': 'https://freefirecommunity.com/'
-    }
-  });
-  if (!res.ok) throw new Error(`ffc HTTP ${res.status}`);
+async function providerPrince(uid, region) {
+  const url = `https://freefireinfo-zy9l.onrender.com/api/v1/player-profile?uid=${encodeURIComponent(uid)}&server=${encodeURIComponent(region)}`;
+  const res = await fetchWithTimeout(url, 22000);
+  if (!res.ok) throw new Error(`prince HTTP ${res.status}`);
+
   const json = await res.json();
+  if (json.status === 'error' || json.code === 404) {
+    throw new Error(json.message || 'Player tidak ditemukan.');
+  }
+
   const d = json.data || json;
-  if (!d || (!d.nickname && !d.name)) throw new Error('ffc: data kosong');
+  const basic = d.basicInfo || d.basic_info || d.accountInfo || d;
+  const profile = d.profileInfo || d.profile_info || {};
+  const social = d.socialInfo || d.social_info || {};
+  const guild = d.guildInfo || d.clanBasicInfo || d.clan_basic_info || {};
+
+  if (!basic.nickname && !basic.accountid && !basic.accountId) {
+    throw new Error('prince: data tidak lengkap');
+  }
 
   return {
-    uid: String(d.uid || uid),
-    nickname: d.nickname || d.name || '-',
-    level: parseInt(d.level || d.account_level, 10) || 0,
-    exp: parseInt(d.exp || d.experience, 10) || 0,
-    rank: d.rank || d.br_rank || d.brRank || '-',
-    rankPoints: parseInt(d.rank_points || d.br_points, 10) || 0,
-    guild: d.guild || d.guild_name || null,
-    region: region.toUpperCase(),
-    avatar: d.avatar || d.profile_pic || null,
-    signature: d.signature || d.bio || null,
-    likes: parseInt(d.likes, 10) || 0,
-    createdAt: d.created_at || null,
-    lastLogin: d.last_login || null
+    uid: String(basic.accountid || basic.accountId || uid),
+    nickname: basic.nickname || '-',
+    level: num(basic.level),
+    exp: num(basic.exp),
+    rank: basic.rank || 0,
+    rankPoints: num(basic.rankingpoints || basic.rankingPoints),
+    csRank: basic.csrank || basic.csRank || 0,
+    csRankPoints: num(basic.csrankingpoints || basic.csRankingPoints),
+    maxRank: basic.maxrank || basic.maxRank || 0,
+    guild: guild.guildName || guild.clanName || guild.guild_name || null,
+    guildId: guild.guildId || guild.clanId || null,
+    guildLevel: guild.guildLevel || guild.clanLevel || null,
+    region: (basic.region || region).toUpperCase(),
+    signature: social.signature || null,
+    likes: num(basic.liked || basic.like),
+    title: basic.title || null,
+    avatarId: basic.headpic || basic.headPic || null,
+    bannerId: basic.bannerid || basic.bannerId || null,
+    seasonId: basic.seasonid || basic.seasonId || null,
+    createdAt: basic.createat || basic.createAt || null,
+    lastLogin: basic.lastloginat || basic.lastLoginAt || null,
+    provider: 'prince',
+    raw: null
   };
 }
 
 /* ============================================================
-   PROVIDER 2 — ff.garena-api.workers.dev
+   PROVIDER 2 — jinix6/0xMe FreeFire-Api (Render)
+   Base: https://free-ff-api-src-5plp.onrender.com
+   Endpoint: /api/v1/account?region={region}&uid={uid}
    ============================================================ */
-async function providerWorker(uid, region) {
-  const url = `https://ff.garena-api.workers.dev/account?uid=${encodeURIComponent(uid)}&region=${region}`;
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'User-Agent': UA, 'Accept': 'application/json' }
-  });
-  if (!res.ok) throw new Error(`worker HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.success === false || !json.data) throw new Error('worker: data kosong');
+async function providerJinix(uid, region) {
+  const url = `https://free-ff-api-src-5plp.onrender.com/api/v1/account?region=${encodeURIComponent(region)}&uid=${encodeURIComponent(uid)}`;
+  const res = await fetchWithTimeout(url, 22000);
+  if (!res.ok) throw new Error(`jinix HTTP ${res.status}`);
 
-  const d = json.data || json;
-  const profile = d.profile || d;
+  const json = await res.json();
+  if (json.error || json.status === 'error') {
+    throw new Error(json.error || json.message || 'Player tidak ditemukan.');
+  }
+
+  const basic = json.basicInfo || json.basic_info || json;
+  const social = json.socialInfo || json.social_info || {};
+  const clan = json.clanBasicInfo || json.clan_basic_info || json.guildInfo || {};
+
+  if (!basic.nickname && !basic.accountId && !basic.accountid) {
+    throw new Error('jinix: data tidak lengkap');
+  }
 
   return {
-    uid: String(profile.uid || profile.account_id || uid),
-    nickname: profile.nickname || profile.name || '-',
-    level: parseInt(profile.level || profile.account_level, 10) || 0,
-    exp: parseInt(profile.exp, 10) || 0,
-    rank: profile.rank || profile.br_rank || '-',
-    rankPoints: parseInt(profile.rank_points || profile.br_points, 10) || 0,
-    guild: profile.guild || profile.guild_name || null,
-    region: region.toUpperCase(),
-    avatar: profile.avatar || null,
-    signature: profile.signature || null,
-    likes: parseInt(profile.likes, 10) || 0,
-    createdAt: profile.created_at || null,
-    lastLogin: profile.last_login || null
-  };
-}
-
-/* ============================================================
-   PROVIDER 3 — garena-api.vercel.app (public demo)
-   ============================================================ */
-async function providerGarena(uid, region) {
-  const url = `https://garena-api.vercel.app/api/ff?uid=${encodeURIComponent(uid)}&region=${region}`;
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'User-Agent': UA, 'Accept': 'application/json' }
-  });
-  if (!res.ok) throw new Error(`garena HTTP ${res.status}`);
-  const json = await res.json();
-  const d = json.data || json;
-  if (!d || (!d.nickname && !d.name)) throw new Error('garena: data kosong');
-
-  return {
-    uid: String(d.uid || uid),
-    nickname: d.nickname || d.name || '-',
-    level: parseInt(d.level, 10) || 0,
-    exp: parseInt(d.exp, 10) || 0,
-    rank: d.rank || '-',
-    rankPoints: parseInt(d.rank_points, 10) || 0,
-    guild: d.guild || null,
-    region: region.toUpperCase(),
-    avatar: d.avatar || null,
-    signature: d.signature || null,
-    likes: parseInt(d.likes, 10) || 0,
-    createdAt: d.created_at || null,
-    lastLogin: d.last_login || null
+    uid: String(basic.accountId || basic.accountid || uid),
+    nickname: basic.nickname || '-',
+    level: num(basic.level),
+    exp: num(basic.exp),
+    rank: basic.rank || 0,
+    rankPoints: num(basic.rankingPoints || basic.rankingpoints),
+    csRank: basic.csRank || basic.csrank || 0,
+    csRankPoints: num(basic.csRankingPoints || basic.csrankingpoints),
+    maxRank: basic.maxRank || basic.maxrank || 0,
+    guild: clan.clanName || clan.guildName || null,
+    guildId: clan.clanId || clan.guildId || null,
+    guildLevel: clan.clanLevel || clan.guildLevel || null,
+    region: (basic.region || region).toUpperCase(),
+    signature: social.signature || null,
+    likes: num(basic.liked || basic.like),
+    title: basic.title || null,
+    avatarId: basic.headPic || basic.headpic || null,
+    bannerId: basic.bannerId || basic.bannerid || null,
+    seasonId: basic.seasonId || basic.seasonid || null,
+    createdAt: basic.createAt || basic.createat || null,
+    lastLogin: basic.lastLoginAt || basic.lastloginat || null,
+    provider: 'jinix',
+    raw: null
   };
 }
 
@@ -148,11 +183,9 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'UID harus 6-14 digit angka.' });
     }
 
-    /* Provider list — dicoba berurutan */
     const providers = [
-      { name: 'freefirecommunity', fn: providerFFC },
-      { name: 'worker', fn: providerWorker },
-      { name: 'garena', fn: providerGarena }
+      { name: 'prince', fn: providerPrince },
+      { name: 'jinix',  fn: providerJinix }
     ];
 
     const errors = [];
@@ -178,7 +211,7 @@ module.exports = async function handler(req, res) {
     if (!result) {
       return res.status(404).json({
         success: false,
-        error: `Player dengan UID ${uid} tidak ditemukan. Detail: ${errors.join(' | ')}`
+        error: `Player dengan UID ${uid} (region ${region}) tidak ditemukan. Coba cek UID atau ganti region.`
       });
     }
 
@@ -188,8 +221,7 @@ module.exports = async function handler(req, res) {
       success: true,
       data: {
         ...result,
-        provider: usedProvider,
-        profileUrl: `https://www.freefiremobile.com/`
+        provider: usedProvider
       }
     });
 
