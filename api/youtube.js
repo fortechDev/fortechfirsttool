@@ -1,18 +1,27 @@
 /* ============================================================
    FORTECH FIRST TOOLS — API: YouTube Downloader
-   Zero dependency — direct InnerTube API (client ANDROID v20.10.38)
-   Endpoint : POST /api/youtube
-   Body     : { url, format, type }
+   Client: ANDROID + fallback TV_EMBEDDED untuk age-gate
    ============================================================ */
 
 const INNERTUBE_KEY = 'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w';
-const CLIENT_NAME = 'ANDROID';
-const CLIENT_NAME_ID = '3';
-const CLIENT_VERSION = '20.10.38';
-const ANDROID_SDK = 30;
-const USER_AGENT = `com.google.android.youtube/${CLIENT_VERSION} (Linux; U; Android 11) gzip`;
 
-/* ---------- CORS ---------- */
+/* Client configs */
+const CLIENTS = {
+  android: {
+    clientName: 'ANDROID',
+    clientNameId: '3',
+    clientVersion: '20.10.38',
+    androidSdkVersion: 30,
+    userAgent: 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip'
+  },
+  tv: {
+    clientName: 'TVHTML5_SIMPLY_EMBEDDED_PLAYER',
+    clientNameId: '85',
+    clientVersion: '2.0',
+    userAgent: 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version'
+  }
+};
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -20,7 +29,6 @@ function setCors(res) {
   res.setHeader('Cache-Control', 'no-store');
 }
 
-/* ---------- Extract video ID ---------- */
 function extractVideoId(url) {
   const patterns = [
     /(?:youtube\.com\/watch\?(?:.*&)?v=)([A-Za-z0-9_-]{11})/,
@@ -36,7 +44,6 @@ function extractVideoId(url) {
   return null;
 }
 
-/* ---------- Parse "MP4 · 1080p" ---------- */
 function parseFormat(str) {
   const s = String(str || '').toLowerCase();
   const isAudio = s.includes('mp3') || s.includes('audio');
@@ -45,7 +52,6 @@ function parseFormat(str) {
   return { isAudio, quality };
 }
 
-/* ---------- Duration ---------- */
 function fmtDuration(sec) {
   const s = parseInt(sec, 10) || 0;
   const h = Math.floor(s / 3600);
@@ -55,43 +61,44 @@ function fmtDuration(sec) {
   return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`;
 }
 
-/* ---------- InnerTube player call ---------- */
-async function fetchPlayer(videoId) {
+async function fetchPlayerWithClient(videoId, clientKey, cookie) {
+  const c = CLIENTS[clientKey];
+  if (!c) throw new Error('Unknown client: ' + clientKey);
+
   const url = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}&prettyPrint=false`;
 
   const payload = {
     context: {
       client: {
-        clientName: CLIENT_NAME,
-        clientVersion: CLIENT_VERSION,
-        androidSdkVersion: ANDROID_SDK,
-        userAgent: USER_AGENT,
+        clientName: c.clientName,
+        clientVersion: c.clientVersion,
         hl: 'en',
         timeZone: 'UTC',
         utcOffsetMinutes: 0
       }
     },
     videoId,
-    playbackContext: {
-      contentPlaybackContext: {
-        html5Preference: 'HTML5_PREF_WANTS',
-        signatureTimestamp: 20179
-      }
-    },
     contentCheckOk: true,
     racyCheckOk: true
   };
 
+  if (c.androidSdkVersion) {
+    payload.context.client.androidSdkVersion = c.androidSdkVersion;
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'User-Agent': c.userAgent,
+    'X-Goog-Api-Format-Version': '2',
+    'X-YouTube-Client-Name': c.clientNameId,
+    'X-YouTube-Client-Version': c.clientVersion
+  };
+
+  if (cookie) headers['Cookie'] = cookie;
+
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': USER_AGENT,
-      'X-Goog-Api-Format-Version': '2',
-      'X-YouTube-Client-Name': CLIENT_NAME_ID,
-      'X-YouTube-Client-Version': CLIENT_VERSION,
-      'Origin': 'https://www.youtube.com'
-    },
+    headers,
     body: JSON.stringify(payload)
   });
 
@@ -102,15 +109,12 @@ async function fetchPlayer(videoId) {
   return await res.json();
 }
 
-/* ---------- Pick best stream ---------- */
 function pickStream(playerData, isAudio, targetQuality, videoOnly) {
   const sd = playerData.streamingData || {};
   const all = [];
 
   if (Array.isArray(sd.formats)) {
-    for (const f of sd.formats) {
-      all.push({ ...f, hasVideo: true, hasAudio: true });
-    }
+    for (const f of sd.formats) all.push({ ...f, hasVideo: true, hasAudio: true });
   }
   if (Array.isArray(sd.adaptiveFormats)) {
     for (const f of sd.adaptiveFormats) {
@@ -134,7 +138,6 @@ function pickStream(playerData, isAudio, targetQuality, videoOnly) {
     candidates = all.filter(f => f.hasVideo && f.hasAudio);
     if (!candidates.length) candidates = all.filter(f => f.hasVideo);
   }
-
   if (!candidates.length) return null;
 
   if (isAudio) {
@@ -147,11 +150,9 @@ function pickStream(playerData, isAudio, targetQuality, videoOnly) {
       (a, b) => Math.abs((a.height || 0) - targetQuality) - Math.abs((b.height || 0) - targetQuality)
     )[0];
   }
-
   return candidates.slice().sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
 }
 
-/* ---------- Handler ---------- */
 module.exports = async function handler(req, res) {
   setCors(res);
 
@@ -175,12 +176,33 @@ module.exports = async function handler(req, res) {
     const { isAudio, quality } = parseFormat(format);
     const videoOnly = String(type || '').toLowerCase().includes('video only');
 
-    const playerData = await fetchPlayer(videoId);
+    /* Cookie optional dari env var */
+    const cookie = process.env.YOUTUBE_COOKIE || null;
+
+    /* Coba client ANDROID dulu, kalau LOGIN_REQUIRED fallback ke TV */
+    let playerData = null;
+    let usedClient = 'android';
+
+    try {
+      playerData = await fetchPlayerWithClient(videoId, 'android', cookie);
+      const st = (playerData.playabilityStatus || {}).status;
+      if (st && st !== 'OK' && /LOGIN_REQUIRED|AGE|CONTENT_CHECK/i.test(st)) {
+        console.log('[youtube] Android blocked, fallback ke TV_EMBEDDED...');
+        playerData = null;
+      }
+    } catch (e) {
+      console.error('[youtube] Android client error:', e.message);
+    }
+
+    if (!playerData) {
+      usedClient = 'tv';
+      playerData = await fetchPlayerWithClient(videoId, 'tv', cookie);
+    }
 
     const status = playerData.playabilityStatus || {};
     if (status.status !== 'OK') {
       const map = {
-        LOGIN_REQUIRED: 'Video memerlukan login (kemungkinan age-restricted).',
+        LOGIN_REQUIRED: 'Video memerlukan login (kemungkinan age-restricted). Solusi: tambah cookie YouTube di env var Vercel.',
         UNPLAYABLE: 'Video tidak bisa diputar.',
         ERROR: 'Video tidak ditemukan atau tidak tersedia.',
         CONTENT_CHECK_REQUIRED: 'Video butuh verifikasi konten.'
@@ -214,6 +236,7 @@ module.exports = async function handler(req, res) {
         durationSeconds: parseInt(details.lengthSeconds, 10) || 0,
         thumbnail,
         videoId,
+        client: usedClient,
         container: mime.includes('mp4') ? 'mp4' : mime.includes('webm') ? 'webm' : (isAudio ? 'audio' : 'mp4'),
         quality: stream.qualityLabel || stream.quality || (isAudio ? 'audio' : 'video'),
         size: stream.contentLength ? (parseInt(stream.contentLength, 10) / 1024 / 1024).toFixed(1) + ' MB' : null,
