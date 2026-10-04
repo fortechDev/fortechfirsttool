@@ -2,10 +2,23 @@
    FORTECH FIRST TOOLS — API: YouTube Downloader
    Endpoint : POST /api/youtube
    Body     : { url, format, type }
-   Library  : yt-direct (InnerTube API, zero-dependency)
+   Library  : youtubei.js (InnerTube API — sama seperti yt-dlp)
    ============================================================ */
 
-const ytdl = require('yt-direct');
+const { Innertube, UniversalCache } = require('youtubei.js');
+
+/* ---------- Singleton client (cache antar-request) ---------- */
+let _client = null;
+async function getClient() {
+  if (!_client) {
+    _client = await Innertube.create({
+      cache: new UniversalCache(false),
+      generate_session_locally: true,
+      retrieve_player: true
+    });
+  }
+  return _client;
+}
 
 /* ---------- CORS ---------- */
 function setCors(res) {
@@ -15,13 +28,29 @@ function setCors(res) {
   res.setHeader('Cache-Control', 'no-store');
 }
 
+/* ---------- Extract video ID ---------- */
+function extractVideoId(url) {
+  const patterns = [
+    /(?:youtube\.com\/watch\?(?:.*&)?v=)([A-Za-z0-9_-]{11})/,
+    /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/live\/)([A-Za-z0-9_-]{11})/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 /* ---------- Parse "MP4 · 1080p" ---------- */
 function parseFormat(str) {
   const s = String(str || '').toLowerCase();
-  const container = s.includes('mp3') || s.includes('audio') ? 'audio' : 'mp4';
+  const isAudio = s.includes('mp3') || s.includes('audio');
   const q = s.match(/(\d{3,4})p/);
   const quality = q ? q[1] + 'p' : '720p';
-  return { container, quality };
+  return { isAudio, quality };
 }
 
 /* ---------- Format durasi ---------- */
@@ -34,13 +63,32 @@ function fmtDuration(sec) {
   return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`;
 }
 
+/* ---------- Pilih format ---------- */
+function pickFormat(info, isAudio, quality, videoOnly) {
+  try {
+    if (isAudio) {
+      return info.chooseFormat({ type: 'audio', quality: 'best' });
+    }
+    if (videoOnly) {
+      return info.chooseFormat({ type: 'video', quality }) ||
+             info.chooseFormat({ type: 'video', quality: 'best' });
+    }
+    /* Combined video+audio — biasanya max 720p */
+    const combined = info.chooseFormat({ type: 'video+audio', quality }) ||
+                     info.chooseFormat({ type: 'video+audio', quality: 'best' });
+    if (combined) return combined;
+    /* Fallback: video-only */
+    return info.chooseFormat({ type: 'video', quality: 'best' });
+  } catch (e) {
+    return null;
+  }
+}
+
 /* ---------- Handler ---------- */
 module.exports = async function handler(req, res) {
   setCors(res);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed. Gunakan POST.' });
   }
@@ -49,34 +97,55 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { url, format, type } = body;
 
-    /* Validasi input */
     if (!url || typeof url !== 'string') {
       return res.status(400).json({ success: false, error: 'URL YouTube wajib diisi.' });
     }
     const cleanUrl = url.trim();
-
-    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(cleanUrl)) {
+    const videoId = extractVideoId(cleanUrl);
+    if (!videoId) {
       return res.status(400).json({ success: false, error: 'URL YouTube tidak valid.' });
     }
 
-    /* Parse format dari UI */
-    const { container, quality } = parseFormat(format);
-    const isAudio = container === 'audio' || String(type || '').toLowerCase().includes('audio');
+    const { isAudio, quality } = parseFormat(format);
+    const videoOnly = String(type || '').toLowerCase().includes('video only');
 
-    /* Fetch info + format via yt-direct (InnerTube API) */
-    const video = await ytdl(cleanUrl, {
-      quality: isAudio ? 'audio' : quality,
-      format: isAudio ? 'mp3' : 'mp4',
-      filter: isAudio ? 'audioonly' : 'audioandvideo',
-      preferMp4: true,
-      timeout: 25000,
-      retries: 2
-    });
+    /* Ambil client & info */
+    const yt = await getClient();
+    const info = await yt.getInfo(videoId);
 
-    if (!video || !video.url) {
+    const basic = info.basic_info || {};
+    const title = basic.title || '-';
+    const author = basic.author || '-';
+    const durationSec = basic.duration || 0;
+    const thumbnails = basic.thumbnail || [];
+    const thumbnail = thumbnails.length
+      ? thumbnails[thumbnails.length - 1].url
+      : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+    /* Pilih format */
+    const chosen = pickFormat(info, isAudio, quality, videoOnly);
+    if (!chosen) {
       return res.status(500).json({
         success: false,
         error: 'Tidak ada format yang cocok. Coba pilih format lain.'
+      });
+    }
+
+    /* Decipher URL */
+    let downloadUrl;
+    try {
+      downloadUrl = chosen.decipher(yt.session.player);
+    } catch (e) {
+      return res.status(500).json({
+        success: false,
+        error: 'Gagal decipher URL download. Coba lagi.'
+      });
+    }
+
+    if (!downloadUrl) {
+      return res.status(500).json({
+        success: false,
+        error: 'URL download kosong. Coba lagi.'
       });
     }
 
@@ -84,34 +153,37 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       data: {
-        title: video.title || '-',
-        author: video.author || '-',
-        duration: video.duration ? fmtDuration(video.duration) : '-',
-        durationSeconds: parseInt(video.duration, 10) || 0,
-        thumbnail: video.thumbnail || (video.videoId ? `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg` : ''),
-        videoId: video.videoId || '',
-        container: video.format && video.format.container ? video.format.container : (isAudio ? 'mp3' : 'mp4'),
-        quality: video.quality || (isAudio ? 'audio' : 'video'),
-        size: video.size ? (video.size / 1024 / 1024).toFixed(1) + ' MB' : null,
-        download: video.url,
-        audioDownload: video.audio && video.audio.url ? video.audio.url : null,
-        note: 'Link berlaku sementara. Kalau expired, cari ulang.'
+        title,
+        author,
+        duration: fmtDuration(durationSec),
+        durationSeconds: durationSec,
+        thumbnail,
+        videoId,
+        container: chosen.container || (isAudio ? 'mp3' : 'mp4'),
+        quality: chosen.quality_label || chosen.quality || (isAudio ? 'audio' : quality),
+        size: chosen.content_length
+          ? (parseInt(chosen.content_length, 10) / 1024 / 1024).toFixed(1) + ' MB'
+          : null,
+        download: downloadUrl,
+        note: 'Link berlaku sementara (beberapa jam). Kalau expired, cari ulang.'
       }
     });
 
   } catch (err) {
     const msg = (err && err.message) ? err.message : 'Gagal mengambil data dari YouTube.';
-    console.error('[youtube] error:', msg);
+    console.error('[youtube] error:', msg, err && err.stack);
 
     let friendly = msg;
     if (/sign in to confirm|bot/i.test(msg)) {
-      friendly = 'YouTube masih memblokir request. Coba lagi beberapa saat.';
-    } else if (/private|unavailable/i.test(msg)) {
+      friendly = 'YouTube memblokir request dari server ini. Coba lagi beberapa saat.';
+    } else if (/private|unavailable|not available/i.test(msg)) {
       friendly = 'Video tidak tersedia atau bersifat private.';
     } else if (/age/i.test(msg)) {
       friendly = 'Video dibatasi umur dan tidak bisa diakses tanpa login.';
-    } else if (/timeout/i.test(msg)) {
+    } else if (/timeout|ETIMEDOUT/i.test(msg)) {
       friendly = 'Request timeout. Coba lagi.';
+    } else if (/parse|decipher|signature/i.test(msg)) {
+      friendly = 'Gagal memproses signature video. Coba lagi beberapa saat.';
     }
 
     return res.status(500).json({ success: false, error: friendly });
