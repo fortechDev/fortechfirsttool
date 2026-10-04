@@ -2,11 +2,12 @@
    FORTECH FIRST TOOLS — API: Pinterest Downloader
    Endpoint : POST /api/pinterest
    Body     : { url }
-   Metode   : Pinterest internal PinResource API (via in.pinterest.com)
+   Metode   : Multi-provider fallback (3 sumber)
    ============================================================ */
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
+/* ---------- CORS ---------- */
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -14,6 +15,7 @@ function setCors(res) {
   res.setHeader('Cache-Control', 'no-store');
 }
 
+/* ---------- Extract pin ID ---------- */
 function extractPinId(url) {
   let m = url.match(/\/pin\/(\d+)/);
   if (m) return m[1];
@@ -22,68 +24,118 @@ function extractPinId(url) {
   return null;
 }
 
-async function resolveShortlink(url) {
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'User-Agent': UA },
-      redirect: 'follow'
-    });
-    return res.url || url;
-  } catch {
-    return url;
-  }
+/* ---------- Normalize URL ---------- */
+function normalizeUrl(u) {
+  if (!u) return null;
+  if (u.startsWith('http')) return u;
+  return 'https://www.pinterest.com' + u;
 }
 
-/* ---------- Fetch pin detail via in.pinterest.com ---------- */
-async function fetchPinData(pinId, attempt = 1) {
-  const sourceUrl = `/pin/${pinId}/`;
-  const options = {
-    id: pinId,
-    field_set_key: 'detailed'
-  };
-
-  // Ganti base URL ke in.pinterest.com
-  const apiUrl = `https://in.pinterest.com/resource/PinResource/get/?source_url=${encodeURIComponent(sourceUrl)}&data=${encodeURIComponent(JSON.stringify({ options, context: {} }))}`;
-
+/* ============================================================
+   PROVIDER 1 — cedds-api.duckdns.org
+   ============================================================ */
+async function providerCedds(url) {
+  const apiUrl = `https://cedds-api.duckdns.org/downloader/pintedl?url=${encodeURIComponent(url)}`;
   const res = await fetch(apiUrl, {
     method: 'GET',
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-APP-VERSION': 'cb1c9b5',
-      'X-Pinterest-AppState': 'active',
-      'Referer': `https://in.pinterest.com${sourceUrl}`
-    }
+    headers: { 'User-Agent': UA, 'Accept': 'application/json' }
   });
-
-  if ((res.status === 403 || res.status === 429) && attempt < 3) {
-    await new Promise(r => setTimeout(r, 1000 * attempt));
-    return fetchPinData(pinId, attempt + 1);
-  }
-
-  if (!res.ok) throw new Error(`Pinterest HTTP ${res.status}`);
-
+  if (!res.ok) throw new Error(`cedds HTTP ${res.status}`);
   const json = await res.json();
-  const data = json && json.resource_response && json.resource_response.data;
-  if (!data || !data.id) {
-    throw new Error('Pin tidak ditemukan atau tidak bisa diakses.');
-  }
-  return data;
+  if (!json.success || !json.data) throw new Error('cedds: data kosong');
+
+  const d = json.data;
+  const downloads = d.downloads || [];
+  const videoDl = downloads.find(x => x.type === 'video');
+  const imageDl = downloads.find(x => x.type === 'image');
+
+  return {
+    id: d.pin_id || '',
+    title: d.title || 'Pinterest Pin',
+    description: '',
+    type: videoDl ? 'video' : 'image',
+    image: imageDl?.url || d.thumbnail || null,
+    video: videoDl?.url || null,
+    pinner: { username: '-', fullName: '-', avatar: null },
+    board: { name: '-', url: null },
+    link: d.source_url || null,
+    saves: 0,
+    comments: 0
+  };
 }
 
-function pickBestImage(images) {
-  if (!images) return null;
-  const order = ['orig', 'originals', '736x', '564x', '474x', '236x'];
-  for (const key of order) {
-    if (images[key] && images[key].url) return images[key].url;
-  }
-  const first = Object.keys(images)[0];
-  return first ? images[first].url : null;
+/* ============================================================
+   PROVIDER 2 — majidapi.ir
+   ============================================================ */
+async function providerMajid(url) {
+  const apiUrl = `https://api.majidapi.ir/social/pinterest?action=download&url=${encodeURIComponent(url)}`;
+  const res = await fetch(apiUrl, {
+    method: 'GET',
+    headers: { 'User-Agent': UA, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error(`majid HTTP ${res.status}`);
+  const json = await res.json();
+  if (!json.success && !json.data) throw new Error('majid: data kosong');
+
+  const d = json.data || json.result || json;
+  const isVideo = !!(d.video || d.video_url);
+  const imageUrl = d.image || d.image_url || d.thumbnail || null;
+
+  return {
+    id: d.id || extractPinId(url) || '',
+    title: d.title || 'Pinterest Pin',
+    description: d.description || '',
+    type: isVideo ? 'video' : 'image',
+    image: imageUrl,
+    video: d.video || d.video_url || null,
+    pinner: { username: '-', fullName: '-', avatar: null },
+    board: { name: '-', url: null },
+    link: url,
+    saves: 0,
+    comments: 0
+  };
 }
 
+/* ============================================================
+   PROVIDER 3 — Pinterest oEmbed + image CDN (last resort)
+   ============================================================ */
+async function providerOembed(url) {
+  const pinId = extractPinId(url);
+  if (!pinId) throw new Error('oembed: pin id tidak ditemukan');
+
+  const oembedUrl = `https://www.pinterest.com/oembed.json?url=${encodeURIComponent(`https://www.pinterest.com/pin/${pinId}/`)}`;
+  const res = await fetch(oembedUrl, {
+    method: 'GET',
+    headers: { 'User-Agent': UA, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error(`oembed HTTP ${res.status}`);
+  const json = await res.json();
+
+  /* Image URL fallback pakai CDN pola pinimg */
+  const imageUrl = `https://i.pinimg.com/736x/${pinId.slice(-6, -3)}/${pinId.slice(-3)}/${pinId}.jpg`;
+
+  return {
+    id: pinId,
+    title: json.title || 'Pinterest Pin',
+    description: json.description || '',
+    type: 'image',
+    image: json.thumbnail_url || imageUrl,
+    video: null,
+    pinner: {
+      username: json.author_name || '-',
+      fullName: json.author_name || '-',
+      avatar: json.author_url || null
+    },
+    board: { name: '-', url: json.provider_url || null },
+    link: url,
+    saves: 0,
+    comments: 0
+  };
+}
+
+/* ============================================================
+   HANDLER
+   ============================================================ */
 module.exports = async function handler(req, res) {
   setCors(res);
 
@@ -103,57 +155,47 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'URL Pinterest tidak valid.' });
     }
 
-    if (/pin\.it/i.test(url)) {
-      url = await resolveShortlink(url);
+    /* Daftar provider — dicoba berurutan */
+    const providers = [
+      { name: 'cedds', fn: providerCedds },
+      { name: 'majid', fn: providerMajid },
+      { name: 'oembed', fn: providerOembed }
+    ];
+
+    const errors = [];
+    let result = null;
+    let usedProvider = null;
+
+    for (const p of providers) {
+      try {
+        console.log(`[pinterest] trying provider: ${p.name}`);
+        const data = await p.fn(url);
+        if (data && (data.image || data.video)) {
+          result = data;
+          usedProvider = p.name;
+          break;
+        }
+        errors.push(`${p.name}: data kosong`);
+      } catch (e) {
+        console.warn(`[pinterest] provider ${p.name} gagal:`, e.message);
+        errors.push(`${p.name}: ${e.message}`);
+      }
     }
 
-    const pinId = extractPinId(url);
-    if (!pinId) {
-      return res.status(400).json({ success: false, error: 'Tidak bisa menemukan ID pin dari URL.' });
+    if (!result) {
+      return res.status(500).json({
+        success: false,
+        error: 'Semua provider gagal mengambil data. Detail: ' + errors.join(' | ')
+      });
     }
 
-    const pin = await fetchPinData(pinId);
-
-    const isVideo = !!pin.videos || (pin.story_pin_data && pin.story_pin_data.pages) || pin.video_status === 'finished';
-    const images = pin.images || {};
-
-    let videoUrl = null;
-    if (pin.videos) {
-      videoUrl = pin.videos.V_HLSV4?.url ||
-                 pin.videos.V_HLSV3?.url ||
-                 pin.videos.V_720P?.url ||
-                 pin.videos.V_480P?.url ||
-                 pin.videos.V_EXPMP4_720P?.url ||
-                 null;
-    }
-
-    const imageUrl = pickBestImage(images) || pin.image_large_url || null;
-
-    const pinner = pin.pinner || {};
-    const board = pin.board || {};
+    console.log(`[pinterest] sukses via provider: ${usedProvider}`);
 
     return res.status(200).json({
       success: true,
       data: {
-        id: pin.id || pinId,
-        title: pin.title || pin.grid_title || pin.description || 'Pinterest Pin',
-        description: pin.description || '',
-        type: isVideo ? 'video' : 'image',
-        image: imageUrl,
-        video: videoUrl,
-        pinner: {
-          username: pinner.username || '-',
-          fullName: pinner.full_name || '-',
-          avatar: pinner.image_small_url || pinner.image_xlarge_url || null
-        },
-        board: {
-          name: board.name || '-',
-          url: board.url || null
-        },
-        link: pin.link || null,
-        saves: pin.repin_count || 0,
-        comments: pin.comment_count || 0,
-        createdAt: pin.created_at || null
+        ...result,
+        provider: usedProvider
       }
     });
 
