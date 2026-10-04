@@ -52,6 +52,34 @@ function buildFiles(filesInput) {
   return files;
 }
 
+/* ---------- Unlock site: clear password + disable protection ---------- */
+async function unlockSite(token, siteId) {
+  try {
+    const res = await fetch(`${NETLIFY_API}/sites/${siteId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        password: '',
+        password_context: 'all',
+        prevent_non_admin_access: false,
+        sso_protection: false
+      })
+    });
+    if (res.ok) {
+      console.log(`[netlify] site ${siteId} unlocked`);
+      return await res.json();
+    }
+    const errText = await res.text();
+    console.warn(`[netlify] unlock return ${res.status}:`, errText.slice(0, 200));
+  } catch (e) {
+    console.warn('[netlify] unlock error:', e.message);
+  }
+  return null;
+}
+
 async function getOrCreateSite(token, name) {
   const listRes = await fetch(`${NETLIFY_API}/sites?name=${encodeURIComponent(name)}`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -59,7 +87,11 @@ async function getOrCreateSite(token, name) {
   if (listRes.ok) {
     const sites = await listRes.json();
     const found = sites.find(s => s.name === name);
-    if (found) return found;
+    if (found) {
+      /* Pastikan site lama juga di-unlock */
+      await unlockSite(token, found.id);
+      return found;
+    }
   }
 
   const createRes = await fetch(`${NETLIFY_API}/sites`, {
@@ -68,7 +100,12 @@ async function getOrCreateSite(token, name) {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ name })
+    body: JSON.stringify({
+      name,
+      /* Set langsung biar public dari awal */
+      password: '',
+      prevent_non_admin_access: false
+    })
   });
 
   if (!createRes.ok) {
@@ -88,7 +125,12 @@ async function getOrCreateSite(token, name) {
     throw new Error(`Gagal buat site (${createRes.status}): ${errMsg}`);
   }
 
-  return await createRes.json();
+  const site = await createRes.json();
+
+  /* PATCH untuk mastiin site public */
+  await unlockSite(token, site.id);
+
+  return site;
 }
 
 async function deployFiles(token, siteId, files) {
