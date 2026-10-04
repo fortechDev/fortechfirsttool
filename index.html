@@ -1346,6 +1346,117 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     box.style.display = 'block';
   }
 
+  /* Handler umum untuk Quick Publish (dipakai Vercel & Netlify) */
+  async function quickPublish(btn, cfg) {
+    const nameEl = document.getElementById(cfg.nameId);
+    const name = nameEl ? nameEl.value.trim() : '';
+    if (!name) return toast('Nama ' + cfg.label + ' wajib diisi', 'error');
+
+    const activeTab = document.querySelector('.vc-tab[data-tab-group="' + cfg.group + '"].active');
+    const mode = activeTab ? activeTab.getAttribute('data-tab-target').replace(cfg.group + '-pane-', '') : 'paste';
+
+    const files = [];
+
+    try {
+      if (mode === 'paste') {
+        const html = document.getElementById(cfg.pasteId).value.trim();
+        if (!html) return toast('HTML masih kosong', 'error');
+        files.push({ path: 'index.html', base64: b64Encode(html), encoding: 'utf-8' });
+
+      } else if (mode === 'file') {
+        const input = document.getElementById(cfg.fileId);
+        const list = Array.from(input.files || []);
+        if (!list.length) return toast('Pilih file dulu', 'error');
+        for (const f of list) {
+          const b64 = await fileToB64(f);
+          const enc = isBinaryFile(f.name) ? 'base64' : 'utf-8';
+          files.push({ path: f.name, base64: b64, encoding: enc });
+        }
+        if (!files.some(f => f.path === 'index.html')) {
+          return toast('Wajib sertakan index.html', 'error');
+        }
+
+      } else {
+        const input = document.getElementById(cfg.folderId);
+        const list = Array.from(input.files || []);
+        if (!list.length) return toast('Pilih folder dulu', 'error');
+
+        const firstPath = list[0].webkitRelativePath || '';
+        const rootFolder = firstPath.split('/')[0];
+
+        for (const f of list) {
+          const relPath = f.webkitRelativePath || f.name;
+          const cleanPath = rootFolder && relPath.startsWith(rootFolder + '/')
+            ? relPath.slice(rootFolder.length + 1)
+            : relPath;
+          const b64 = await fileToB64(f);
+          const enc = isBinaryFile(f.name) ? 'base64' : 'utf-8';
+          files.push({ path: cleanPath, base64: b64, encoding: enc });
+        }
+        if (!files.some(f => f.path === 'index.html')) {
+          return toast('Folder harus punya index.html di root', 'error');
+        }
+      }
+
+      const payloadStr = JSON.stringify({ name, files });
+      if (payloadStr.length > 4 * 1024 * 1024) {
+        return toast('Total ukuran file terlalu besar (>4 MB)', 'error');
+      }
+
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Publishing...</span>';
+
+      try {
+        const res = await fetch(cfg.endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payloadStr
+        });
+        const data = await res.json();
+
+        const box = document.getElementById(cfg.resultId);
+        if (!data.success) throw new Error(data.error || 'Publish gagal');
+
+        const d = data.data;
+        box.innerHTML = `
+          <div class="result-head">
+            <div class="rh-left"><span class="dot"></span>Published · ${d.fileCount} file</div>
+            <a class="btn-mini" href="${esc(d.cleanUrl)}" target="_blank">
+              <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>Buka
+            </a>
+          </div>
+          <div class="result-body">
+            <div class="row">
+              <div class="kv"><span>URL Production</span><b><a href="${esc(d.cleanUrl)}" target="_blank" style="color:var(--teal);text-decoration:none">${esc(d.cleanUrl)}</a></b></div>
+            </div>
+            <div class="row">
+              <div class="kv"><span>Project</span><b>${esc(d.name)}</b></div>
+              <div class="kv"><span>Status</span><b>${esc(d.readyState)}</b></div>
+            </div>
+            <div class="actions">
+              <button class="btn-mini" onclick="FT_copy('${esc(d.cleanUrl)}')">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy URL
+              </button>
+              ${d.inspectorUrl ? `<a class="btn-mini" href="${esc(d.inspectorUrl)}" target="_blank">Dashboard</a>` : ''}
+            </div>
+            <div style="margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.5">
+              URL aktif dalam <b style="color:var(--teal)">15-90 detik</b>. Kalau muncul 404, tunggu sebentar lalu refresh.
+            </div>
+          </div>`;
+        box.style.display = 'block';
+        toast('Publish sukses!', 'success');
+      } catch (e) {
+        showError(cfg.resultId, e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    } catch (outerErr) {
+      showError(cfg.resultId, outerErr.message);
+    }
+  }
+
   const SERVER_HANDLERS = {
 
     youtube: (btn) => {
@@ -1463,145 +1574,27 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
       callServer('spotify', { url, bitrate }, 'sp-result', btn);
     },
 
-    /* ============ VERCEL QUICK PUBLISH (no token field) ============ */
-    vercel: async (btn) => {
-      const name = document.getElementById('vc-name').value.trim();
-      if (!name) return toast('Nama project wajib diisi', 'error');
+    vercel: (btn) => quickPublish(btn, {
+      label: 'project',
+      nameId: 'vc-name',
+      group: 'vc',
+      pasteId: 'vc-html',
+      fileId: 'vc-file-single',
+      folderId: 'vc-folder',
+      resultId: 'vc-result',
+      endpoint: '/api/vercel'
+    }),
 
-      const activeTab = document.querySelector('.vc-tab.active');
-      const mode = activeTab ? activeTab.getAttribute('data-tab-target').replace('vc-pane-', '') : 'paste';
-
-      const files = [];
-
-      try {
-        if (mode === 'paste') {
-          const html = document.getElementById('vc-html').value.trim();
-          if (!html) return toast('HTML masih kosong', 'error');
-          files.push({ path: 'index.html', base64: b64Encode(html), encoding: 'utf-8' });
-
-        } else if (mode === 'file') {
-          const input = document.getElementById('vc-file-single');
-          const list = Array.from(input.files || []);
-          if (!list.length) return toast('Pilih file dulu', 'error');
-          for (const f of list) {
-            const b64 = await fileToB64(f);
-            const enc = isBinaryFile(f.name) ? 'base64' : 'utf-8';
-            files.push({ path: f.name, base64: b64, encoding: enc });
-          }
-          if (!files.some(f => f.path === 'index.html')) {
-            return toast('Wajib sertakan index.html', 'error');
-          }
-
-        } else {
-          const input = document.getElementById('vc-folder');
-          const list = Array.from(input.files || []);
-          if (!list.length) return toast('Pilih folder dulu', 'error');
-
-          const firstPath = list[0].webkitRelativePath || '';
-          const rootFolder = firstPath.split('/')[0];
-
-          for (const f of list) {
-            const relPath = f.webkitRelativePath || f.name;
-            const cleanPath = rootFolder && relPath.startsWith(rootFolder + '/')
-              ? relPath.slice(rootFolder.length + 1)
-              : relPath;
-            const b64 = await fileToB64(f);
-            const enc = isBinaryFile(f.name) ? 'base64' : 'utf-8';
-            files.push({ path: cleanPath, base64: b64, encoding: enc });
-          }
-          if (!files.some(f => f.path === 'index.html')) {
-            return toast('Folder harus punya index.html di root', 'error');
-          }
-        }
-
-        const payloadStr = JSON.stringify({ name, files });
-        if (payloadStr.length > 4 * 1024 * 1024) {
-          return toast('Total ukuran file terlalu besar (>4 MB)', 'error');
-        }
-
-        const orig = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Publishing...</span>';
-
-        try {
-          const res = await fetch('/api/vercel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payloadStr
-          });
-          const data = await res.json();
-
-          const box = document.getElementById('vc-result');
-          if (!data.success) throw new Error(data.error || 'Publish gagal');
-
-          const d = data.data;
-          box.innerHTML = `
-            <div class="result-head">
-              <div class="rh-left"><span class="dot"></span>Published · ${d.fileCount} file</div>
-              <a class="btn-mini" href="${esc(d.cleanUrl)}" target="_blank">
-                <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>Buka
-              </a>
-            </div>
-            <div class="result-body">
-              <div class="row">
-                <div class="kv"><span>URL Production</span><b><a href="${esc(d.cleanUrl)}" target="_blank" style="color:var(--teal);text-decoration:none">${esc(d.cleanUrl)}</a></b></div>
-              </div>
-              <div class="row">
-                <div class="kv"><span>Project</span><b>${esc(d.name)}</b></div>
-                <div class="kv"><span>Status</span><b>${esc(d.readyState)}</b></div>
-              </div>
-              <div class="actions">
-                <button class="btn-mini" onclick="FT_copy('${esc(d.cleanUrl)}')">
-                  <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy URL
-                </button>
-                ${d.inspectorUrl ? `<a class="btn-mini" href="${esc(d.inspectorUrl)}" target="_blank">Dashboard</a>` : ''}
-              </div>
-              <div style="margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.5">
-                URL aktif dalam <b style="color:var(--teal)">30-90 detik</b>. Kalau muncul 404, tunggu sebentar lalu refresh.
-              </div>
-            </div>`;
-          box.style.display = 'block';
-          toast('Publish sukses!', 'success');
-        } catch (e) {
-          showError('vc-result', e.message);
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = orig;
-        }
-      } catch (outerErr) {
-        showError('vc-result', outerErr.message);
-      }
-    },
-
-    netlify: (btn) => {
-      const token = document.getElementById('nt-token').value.trim();
-      const name = document.getElementById('nt-name').value.trim();
-      const file = document.getElementById('nt-file').files[0];
-      if (!token || !name || !file) return toast('Lengkapi token, nama, dan file', 'error');
-      const fd = new FormData();
-      fd.append('token', token);
-      fd.append('name', name);
-      fd.append('file', file);
-      btn.disabled = true;
-      const orig = btn.innerHTML;
-      btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Deploying...</span>';
-      fetch('/api/netlify', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-          const box = document.getElementById('nt-result');
-          if (!data.success) throw new Error(data.error || 'Deploy gagal');
-          box.innerHTML = `
-            <div class="result-head"><div class="rh-left"><span class="dot"></span>Deploy Sukses</div></div>
-            <div class="result-body">
-              <div class="row">
-                <div class="kv"><span>URL</span><b><a href="${esc(data.url)}" target="_blank" style="color:var(--teal)">${esc(data.url)}</a></b></div>
-              </div>
-            </div>`;
-          box.style.display = 'block';
-        })
-        .catch(e => showError('nt-result', e.message))
-        .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
-    },
+    netlify: (btn) => quickPublish(btn, {
+      label: 'site',
+      nameId: 'nt-name',
+      group: 'nt',
+      pasteId: 'nt-html',
+      fileId: 'nt-file-single',
+      folderId: 'nt-folder',
+      resultId: 'nt-result',
+      endpoint: '/api/netlify'
+    }),
 
     'stalk-tiktok': (btn) => {
       const username = document.getElementById('stt-user').value.trim().replace(/^@/, '');
@@ -1864,15 +1857,46 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         <div class="result-box" id="vc-result" style="display:none"></div>
         ${pv('▲','URL hasil muncul di sini','Contoh: nama-project.vercel.app')}`
     },
-    { id: 'netlify', num: '18', tag: 'Deployer', title: 'Netlify Deployer',
-      desc: 'Deploy static site ke Netlify dengan cepat dan mudah.',
+    { id: 'netlify', num: '18', tag: 'Publisher', title: 'Netlify Quick Publish',
+      desc: 'Publish HTML kamu ke Netlify dalam 1 klik. Hasil: nama.netlify.app',
       body: `
-        <div class="field"><label>Netlify Token</label><input id="nt-token" class="input" type="password" placeholder="••••••••••••••••" /><div class="hint">Buat token di app.netlify.com/user/applications.</div></div>
-        <div class="field"><label>Site Name</label><input id="nt-name" class="input" type="text" placeholder="my-static-site" /></div>
-        <div class="field"><label>File Project (ZIP)</label><input id="nt-file" class="input" type="file" accept=".zip" /></div>
-        <button class="btn-submit" id="nt-btn" data-handler="netlify"><span>Deploy ke Netlify</span></button>
+        <div class="field">
+          <label>Nama Site</label>
+          <input id="nt-name" class="input" type="text" placeholder="my-portfolio" />
+          <div class="hint">Hasil: <b>my-portfolio.netlify.app</b></div>
+        </div>
+        <div class="field">
+          <label>Sumber HTML</label>
+          <div class="vc-tabs">
+            <button type="button" class="vc-tab active" data-tab-group="nt" data-tab-target="nt-pane-paste">Paste HTML</button>
+            <button type="button" class="vc-tab" data-tab-group="nt" data-tab-target="nt-pane-file">Pilih File</button>
+            <button type="button" class="vc-tab" data-tab-group="nt" data-tab-target="nt-pane-folder">Pilih Folder</button>
+          </div>
+        </div>
+        <div class="vc-pane tab-pane" data-tab-group="nt" id="nt-pane-paste">
+          <div class="field">
+            <label>HTML Code</label>
+            <textarea id="nt-html" class="textarea" style="min-height:180px" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;&#10;  &lt;head&gt;&lt;title&gt;Halo&lt;/title&gt;&lt;/head&gt;&#10;  &lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;&lt;/body&gt;&#10;&lt;/html&gt;"></textarea>
+            <div class="hint">Kode ini akan jadi <b>index.html</b>.</div>
+          </div>
+        </div>
+        <div class="vc-pane tab-pane" data-tab-group="nt" id="nt-pane-file" style="display:none">
+          <div class="field">
+            <label>Pilih File</label>
+            <input id="nt-file-single" class="input" type="file" multiple accept=".html,.htm,.css,.js,.json,.svg,.txt,.md,.png,.jpg,.jpeg,.gif,.webp,.ico,.woff,.woff2,.ttf" />
+            <div class="hint">Bisa pilih beberapa file. Wajib ada <b>index.html</b>.</div>
+          </div>
+        </div>
+        <div class="vc-pane tab-pane" data-tab-group="nt" id="nt-pane-folder" style="display:none">
+          <div class="field">
+            <label>Pilih Folder Project</label>
+            <input id="nt-folder" class="input" type="file" webkitdirectory directory multiple />
+            <div class="hint">Folder harus punya <b>index.html</b> di root.</div>
+          </div>
+        </div>
+        <button class="btn-submit" id="nt-btn" data-handler="netlify"><span>Publish ke Netlify</span></button>
         <div class="result-box" id="nt-result" style="display:none"></div>
-        ${pv('NL','Status deploy muncul di sini','Progress, URL, dan log deployment.')}`
+        ${pv('NL','URL hasil muncul di sini','Contoh: nama-site.netlify.app')}`
     },
     { id: 'stalk-tiktok', num: '19', tag: 'Stalker', title: 'TikTok Stalker',
       desc: 'Lihat detail profil TikTok berdasarkan username.',
