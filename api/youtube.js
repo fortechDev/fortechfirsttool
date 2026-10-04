@@ -1,5 +1,5 @@
 /* ============================================================
-   FORTECH FIRST TOOLS — API: YouTube Downloader
+   FORECH FIRST TOOLS — API: YouTube Downloader
    Endpoint: POST /api/youtube
    Body    : { url, format, type }
    ============================================================ */
