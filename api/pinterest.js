@@ -2,12 +2,11 @@
    FORTECH FIRST TOOLS — API: Pinterest Downloader
    Endpoint : POST /api/pinterest
    Body     : { url }
-   Metode   : Pinterest internal PinResource API
+   Metode   : Pinterest internal PinResource API (via in.pinterest.com)
    ============================================================ */
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
-/* ---------- CORS ---------- */
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,19 +14,14 @@ function setCors(res) {
   res.setHeader('Cache-Control', 'no-store');
 }
 
-/* ---------- Extract pin ID dari berbagai bentuk URL ---------- */
 function extractPinId(url) {
-  // Format: /pin/1234567890/
   let m = url.match(/\/pin\/(\d+)/);
   if (m) return m[1];
-  // Format: /pin/some-slug--1234567890/
   m = url.match(/--(\d+)\/?/);
   if (m) return m[1];
-  // Format: pin.it/xxxxx (shortlink)
   return null;
 }
 
-/* ---------- Resolve shortlink pin.it ---------- */
 async function resolveShortlink(url) {
   try {
     const res = await fetch(url, {
@@ -41,16 +35,16 @@ async function resolveShortlink(url) {
   }
 }
 
-/* ---------- Fetch pin detail ---------- */
+/* ---------- Fetch pin detail via in.pinterest.com ---------- */
 async function fetchPinData(pinId, attempt = 1) {
   const sourceUrl = `/pin/${pinId}/`;
   const options = {
     id: pinId,
-    field_set_key: 'detailed',
-    fetch_visual_search_objects: true
+    field_set_key: 'detailed'
   };
 
-  const apiUrl = `https://www.pinterest.com/resource/PinResource/get/?source_url=${encodeURIComponent(sourceUrl)}&data=${encodeURIComponent(JSON.stringify({ options, context: {} }))}`;
+  // Ganti base URL ke in.pinterest.com
+  const apiUrl = `https://in.pinterest.com/resource/PinResource/get/?source_url=${encodeURIComponent(sourceUrl)}&data=${encodeURIComponent(JSON.stringify({ options, context: {} }))}`;
 
   const res = await fetch(apiUrl, {
     method: 'GET',
@@ -61,12 +55,12 @@ async function fetchPinData(pinId, attempt = 1) {
       'X-Requested-With': 'XMLHttpRequest',
       'X-APP-VERSION': 'cb1c9b5',
       'X-Pinterest-AppState': 'active',
-      'Referer': `https://www.pinterest.com${sourceUrl}`
+      'Referer': `https://in.pinterest.com${sourceUrl}`
     }
   });
 
   if ((res.status === 403 || res.status === 429) && attempt < 3) {
-    await new Promise(r => setTimeout(r, 800 * attempt));
+    await new Promise(r => setTimeout(r, 1000 * attempt));
     return fetchPinData(pinId, attempt + 1);
   }
 
@@ -80,19 +74,16 @@ async function fetchPinData(pinId, attempt = 1) {
   return data;
 }
 
-/* ---------- Pilih image kualitas terbaik ---------- */
 function pickBestImage(images) {
   if (!images) return null;
   const order = ['orig', 'originals', '736x', '564x', '474x', '236x'];
   for (const key of order) {
     if (images[key] && images[key].url) return images[key].url;
   }
-  // fallback: key pertama
   const first = Object.keys(images)[0];
   return first ? images[first].url : null;
 }
 
-/* ---------- Handler ---------- */
 module.exports = async function handler(req, res) {
   setCors(res);
 
@@ -112,7 +103,6 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'URL Pinterest tidak valid.' });
     }
 
-    /* Resolve shortlink dulu */
     if (/pin\.it/i.test(url)) {
       url = await resolveShortlink(url);
     }
@@ -124,11 +114,9 @@ module.exports = async function handler(req, res) {
 
     const pin = await fetchPinData(pinId);
 
-    /* Tentukan tipe media */
     const isVideo = !!pin.videos || (pin.story_pin_data && pin.story_pin_data.pages) || pin.video_status === 'finished';
     const images = pin.images || {};
 
-    /* Ambil URL video kalau ada */
     let videoUrl = null;
     if (pin.videos) {
       videoUrl = pin.videos.V_HLSV4?.url ||
@@ -139,10 +127,8 @@ module.exports = async function handler(req, res) {
                  null;
     }
 
-    /* Image utama */
     const imageUrl = pickBestImage(images) || pin.image_large_url || null;
 
-    /* Metadata */
     const pinner = pin.pinner || {};
     const board = pin.board || {};
 
