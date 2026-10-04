@@ -1,6 +1,6 @@
 /* ============================================================
    FORTECH FIRST TOOLS — API: YouTube Downloader
-   Zero dependency — direct InnerTube API (client ANDROID)
+   Zero dependency — direct InnerTube API (client ANDROID v20.10.38)
    Endpoint : POST /api/youtube
    Body     : { url, format, type }
    ============================================================ */
@@ -8,8 +8,8 @@
 const INNERTUBE_KEY = 'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w';
 const CLIENT_NAME = 'ANDROID';
 const CLIENT_NAME_ID = '3';
-const CLIENT_VERSION = '19.29.37';
-const SDK_VERSION = 30;
+const CLIENT_VERSION = '20.10.38';
+const ANDROID_SDK = 30;
 const USER_AGENT = `com.google.android.youtube/${CLIENT_VERSION} (Linux; U; Android 11) gzip`;
 
 /* ---------- CORS ---------- */
@@ -58,12 +58,13 @@ function fmtDuration(sec) {
 /* ---------- InnerTube player call ---------- */
 async function fetchPlayer(videoId) {
   const url = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}&prettyPrint=false`;
+
   const payload = {
     context: {
       client: {
         clientName: CLIENT_NAME,
         clientVersion: CLIENT_VERSION,
-        androidSdkVersion: SDK_VERSION,
+        androidSdkVersion: ANDROID_SDK,
         userAgent: USER_AGENT,
         hl: 'en',
         timeZone: 'UTC',
@@ -71,6 +72,12 @@ async function fetchPlayer(videoId) {
       }
     },
     videoId,
+    playbackContext: {
+      contentPlaybackContext: {
+        html5Preference: 'HTML5_PREF_WANTS',
+        signatureTimestamp: 20179
+      }
+    },
     contentCheckOk: true,
     racyCheckOk: true
   };
@@ -82,12 +89,16 @@ async function fetchPlayer(videoId) {
       'User-Agent': USER_AGENT,
       'X-Goog-Api-Format-Version': '2',
       'X-YouTube-Client-Name': CLIENT_NAME_ID,
-      'X-YouTube-Client-Version': CLIENT_VERSION
+      'X-YouTube-Client-Version': CLIENT_VERSION,
+      'Origin': 'https://www.youtube.com'
     },
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok) throw new Error(`InnerTube HTTP ${res.status}`);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`InnerTube HTTP ${res.status}: ${errText.slice(0, 200)}`);
+  }
   return await res.json();
 }
 
