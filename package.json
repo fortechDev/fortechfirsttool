@@ -6,6 +6,6 @@
     "node": "20.x"
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12"
+    "@distube/ytdl-core": "4.16.12"
   }
 }
