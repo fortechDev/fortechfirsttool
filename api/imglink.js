@@ -6,7 +6,9 @@
    ============================================================ */
 
 const MAX_SIZE = 4 * 1024 * 1024;
-const TIMEOUT_MS = 22000;
+const TIMEOUT_MS = 25000;
+
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,32 +23,59 @@ function withTimeout(ms) {
   return { signal: ctrl.signal, clear: () => clearTimeout(t) };
 }
 
+/* ============================================================
+   PROVIDER 1 — Catbox.moe
+   ============================================================ */
 async function uploadCatbox(buffer, filename, mime) {
   const form = new FormData();
   form.append('reqtype', 'fileupload');
   form.append('fileToUpload', new Blob([buffer], { type: mime }), filename);
+
   const t = withTimeout(TIMEOUT_MS);
   try {
     const res = await fetch('https://catbox.moe/user/api.php', {
-      method: 'POST', body: form, signal: t.signal
+      method: 'POST',
+      headers: {
+        'User-Agent': BROWSER_UA,
+        'Accept': '*/*',
+        'Referer': 'https://catbox.moe/'
+      },
+      body: form,
+      signal: t.signal
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = (await res.text()).trim();
-    if (!text.startsWith('http')) throw new Error(text.slice(0, 100) || 'Response tidak valid');
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
+    if (!text.startsWith('http')) throw new Error(text.slice(0, 120) || 'Response tidak valid');
     return text;
   } finally { t.clear(); }
 }
 
+/* ============================================================
+   PROVIDER 2 — Telegra.ph
+   ============================================================ */
 async function uploadTelegraph(buffer, filename, mime) {
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: mime }), filename);
+
   const t = withTimeout(TIMEOUT_MS);
   try {
     const res = await fetch('https://telegra.ph/upload', {
-      method: 'POST', body: form, signal: t.signal
+      method: 'POST',
+      headers: {
+        'User-Agent': BROWSER_UA,
+        'Accept': '*/*',
+        'Referer': 'https://telegra.ph/'
+      },
+      body: form,
+      signal: t.signal
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
+
+    let json;
+    try { json = JSON.parse(text); }
+    catch { throw new Error('Response bukan JSON: ' + text.slice(0, 100)); }
+
     if (!Array.isArray(json) || !json[0] || !json[0].src) {
       throw new Error((json && (json.error || (json[0] && json[0].error))) || 'Response tidak valid');
     }
@@ -54,28 +83,38 @@ async function uploadTelegraph(buffer, filename, mime) {
   } finally { t.clear(); }
 }
 
+/* ============================================================
+   PROVIDER 3 — 0x0.st
+   ============================================================ */
 async function upload0x0(buffer, filename, mime) {
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: mime }), filename);
+
   const t = withTimeout(TIMEOUT_MS);
   try {
     const res = await fetch('https://0x0.st', {
       method: 'POST',
-      headers: { 'User-Agent': 'FortechTools/1.0 (+https://fortech.dev)' },
+      headers: {
+        'User-Agent': 'FortechTools/1.0 (+https://fortech.dev)',
+        'Accept': '*/*'
+      },
       body: form,
       signal: t.signal
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = (await res.text()).trim();
-    if (!text.startsWith('http')) throw new Error(text.slice(0, 100) || 'Response tidak valid');
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
+    if (!text.startsWith('http')) throw new Error(text.slice(0, 120) || 'Response tidak valid');
     return text;
   } finally { t.clear(); }
 }
 
+/* ============================================================
+   HANDLER
+   ============================================================ */
 module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed. Gunakan POST.' });
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed.' });
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
@@ -94,7 +133,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    console.log(`[imglink] upload "${filename}" (${(buffer.length/1024).toFixed(1)} KB)`);
+    console.log(`[imglink] upload "${filename}" (${(buffer.length/1024).toFixed(1)} KB, ${mime})`);
 
     const tasks = [
       { provider: 'catbox',    label: 'Catbox',     fn: uploadCatbox },
@@ -105,7 +144,7 @@ module.exports = async function handler(req, res) {
     const results = await Promise.all(tasks.map(async (t) => {
       try {
         const url = await t.fn(buffer, filename, mime);
-        console.log(`[imglink] ${t.label} OK`);
+        console.log(`[imglink] ${t.label} OK -> ${url}`);
         return { provider: t.provider, label: t.label, success: true, url };
       } catch (e) {
         console.warn(`[imglink] ${t.label} gagal:`, e.message);
@@ -117,20 +156,14 @@ module.exports = async function handler(req, res) {
     if (successCount === 0) {
       return res.status(500).json({
         success: false,
-        error: 'Semua provider gagal mengupload. Coba lagi atau ganti file.',
+        error: 'Semua provider gagal mengupload.',
         data: { results }
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: {
-        filename,
-        size: buffer.length,
-        successCount,
-        total: results.length,
-        results
-      }
+      data: { filename, size: buffer.length, successCount, total: results.length, results }
     });
   } catch (err) {
     const msg = (err && err.message) ? err.message : 'Terjadi kesalahan di server.';
