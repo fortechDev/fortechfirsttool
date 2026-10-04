@@ -6,6 +6,6 @@
     "node": "24.x"
   },
   "dependencies": {
-    "yt-direct": "^1.1.1"
+    "youtubei.js": "^13.0.0"
   }
 }
