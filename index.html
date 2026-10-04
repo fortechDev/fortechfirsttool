@@ -13,11 +13,11 @@
   --navy: #122c91; --blue: #2a6fdb; --teal: #48d6d2; --cyan: #81e9e6; --cream: #fefcbf;
   --bg: #05080f; --bg-soft: #080d1c; --surface: #0b1226; --surface-2: #101a35; --surface-3: #162042;
   --ink: #fefcbf; --body: #a4bfd4; --muted: #5d7290; --muted-2: #3d4d6d;
-  --border: rgba(129, 233, 230, 0.08); --border-2: rgba(129, 233, 230, 0.16); --border-3: rgba(129, 233, 230, 0.28);
-  --teal-a: rgba(72, 214, 210, 0.10); --teal-b: rgba(72, 214, 210, 0.22);
-  --shadow-lg: 0 32px 80px -28px rgba(0, 0, 0, 0.85);
-  --glow-teal: 0 0 40px rgba(72, 214, 210, 0.18);
-  --glow-teal-strong: 0 0 60px rgba(72, 214, 210, 0.32);
+  --border: rgba(129,233,230,0.08); --border-2: rgba(129,233,230,0.16); --border-3: rgba(129,233,230,0.28);
+  --teal-a: rgba(72,214,210,0.10); --teal-b: rgba(72,214,210,0.22);
+  --shadow-lg: 0 32px 80px -28px rgba(0,0,0,0.85);
+  --glow-teal: 0 0 40px rgba(72,214,210,0.18);
+  --glow-teal-strong: 0 0 60px rgba(72,214,210,0.32);
   --r-sm: 10px; --r-md: 16px; --r-lg: 22px; --r-xl: 30px;
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -49,7 +49,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--body);
 .nav { display: flex; align-items: center; gap: 4px; }
 .nav a { color: var(--body); text-decoration: none; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 999px; transition: all 0.25s var(--ease); }
 .nav a:hover { color: var(--cyan); background: var(--teal-a); }
-.nav .badge { font-size: 11px; font-weight: 700; color: var(--cream); background: linear-gradient(135deg, var(--navy), var(--blue)); padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(129,233,230,0.25); letter-spacing: 0.04em; box-shadow: 0 0 16px rgba(42,111,219,0.4); margin-left: 6px; }
+.nav .badge { font-size: 11px; font-weight: 700; color: var(--cream); background: linear-gradient(135deg, var(--navy), var(--blue)); padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(129,233,230,0.25); box-shadow: 0 0 16px rgba(42,111,219,0.4); margin-left: 6px; }
 .hero { padding: 88px 0 96px; }
 .hero-split { display: grid; grid-template-columns: 1.15fr 1fr; gap: 60px; align-items: center; }
 .hero-left .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.20em; text-transform: uppercase; color: var(--teal); margin-bottom: 28px; padding: 7px 16px 7px 12px; border: 1px solid var(--border-2); border-radius: 999px; background: rgba(72,214,210,0.04); }
@@ -155,7 +155,7 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--body);
 .input, .textarea, .select { width: 100%; font-family: var(--font-body); font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1.5px solid var(--border-2); border-radius: var(--r-sm); padding: 12px 14px; transition: all 0.25s var(--ease); outline: none; }
 .input::placeholder, .textarea::placeholder { color: var(--muted); }
 .input:focus, .textarea:focus, .select:focus { border-color: var(--teal); background: var(--surface-3); box-shadow: 0 0 0 4px rgba(72,214,210,0.10); }
-.textarea { resize: vertical; min-height: 130px; font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; }
+.textarea { resize: vertical; min-height: 130px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.6; }
 .select { cursor: pointer; }
 .select option { background: var(--surface); color: var(--ink); }
 .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -509,8 +509,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     return binaryExts.includes(ext[1]);
   }
 
-  /* CLIENT-SIDE TOOLS */
-
   function runImageBase64() {
     const file = document.getElementById('ib-file').files[0];
     const lineBreak = document.getElementById('ib-lb').value;
@@ -785,8 +783,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     }
   }
 
-  /* SERVER-SIDE HANDLERS */
-
   async function callServer(endpoint, payload, resultElId, btn, renderFn) {
     const box = document.getElementById(resultElId);
     const orig = btn.innerHTML;
@@ -826,7 +822,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         const html = document.getElementById(cfg.pasteId).value.trim();
         if (!html) return toast('HTML masih kosong', 'error');
         files.push({ path: 'index.html', base64: b64Encode(html), encoding: 'utf-8' });
-
       } else if (mode === 'file') {
         const input = document.getElementById(cfg.fileId);
         const list = Array.from(input.files || []);
@@ -836,52 +831,35 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
           const enc = isBinaryFile(f.name) ? 'base64' : 'utf-8';
           files.push({ path: f.name, base64: b64, encoding: enc });
         }
-        if (!files.some(f => f.path === 'index.html')) {
-          return toast('Wajib sertakan index.html', 'error');
-        }
-
+        if (!files.some(f => f.path === 'index.html')) return toast('Wajib sertakan index.html', 'error');
       } else {
         const input = document.getElementById(cfg.folderId);
         const list = Array.from(input.files || []);
         if (!list.length) return toast('Pilih folder dulu', 'error');
-
         const firstPath = list[0].webkitRelativePath || '';
         const rootFolder = firstPath.split('/')[0];
-
         for (const f of list) {
           const relPath = f.webkitRelativePath || f.name;
-          const cleanPath = rootFolder && relPath.startsWith(rootFolder + '/')
-            ? relPath.slice(rootFolder.length + 1)
-            : relPath;
+          const cleanPath = rootFolder && relPath.startsWith(rootFolder + '/') ? relPath.slice(rootFolder.length + 1) : relPath;
           const b64 = await fileToB64(f);
           const enc = isBinaryFile(f.name) ? 'base64' : 'utf-8';
           files.push({ path: cleanPath, base64: b64, encoding: enc });
         }
-        if (!files.some(f => f.path === 'index.html')) {
-          return toast('Folder harus punya index.html di root', 'error');
-        }
+        if (!files.some(f => f.path === 'index.html')) return toast('Folder harus punya index.html di root', 'error');
       }
 
       const payloadStr = JSON.stringify({ name, files });
-      if (payloadStr.length > 4 * 1024 * 1024) {
-        return toast('Total ukuran file terlalu besar (>4 MB)', 'error');
-      }
+      if (payloadStr.length > 4 * 1024 * 1024) return toast('Total ukuran file terlalu besar (>4 MB)', 'error');
 
       const orig = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Publishing...</span>';
 
       try {
-        const res = await fetch(cfg.endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payloadStr
-        });
+        const res = await fetch(cfg.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadStr });
         const data = await res.json();
-
         const box = document.getElementById(cfg.resultId);
         if (!data.success) throw new Error(data.error || 'Publish gagal');
-
         const d = data.data;
         box.innerHTML = `
           <div class="result-head">
@@ -891,9 +869,7 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
             </a>
           </div>
           <div class="result-body">
-            <div class="row">
-              <div class="kv"><span>URL Production</span><b><a href="${esc(d.cleanUrl)}" target="_blank" style="color:var(--teal);text-decoration:none">${esc(d.cleanUrl)}</a></b></div>
-            </div>
+            <div class="row"><div class="kv"><span>URL Production</span><b><a href="${esc(d.cleanUrl)}" target="_blank" style="color:var(--teal);text-decoration:none">${esc(d.cleanUrl)}</a></b></div></div>
             <div class="row">
               <div class="kv"><span>Project</span><b>${esc(d.name)}</b></div>
               <div class="kv"><span>Status</span><b>${esc(d.readyState)}</b></div>
@@ -904,21 +880,12 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
               </button>
               ${d.inspectorUrl ? `<a class="btn-mini" href="${esc(d.inspectorUrl)}" target="_blank">Dashboard</a>` : ''}
             </div>
-            <div style="margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.5">
-              URL aktif dalam <b style="color:var(--teal)">15-90 detik</b>. Kalau muncul 404, tunggu sebentar lalu refresh.
-            </div>
           </div>`;
         box.style.display = 'block';
         toast('Publish sukses!', 'success');
-      } catch (e) {
-        showError(cfg.resultId, e.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = orig;
-      }
-    } catch (outerErr) {
-      showError(cfg.resultId, outerErr.message);
-    }
+      } catch (e) { showError(cfg.resultId, e.message); }
+      finally { btn.disabled = false; btn.innerHTML = orig; }
+    } catch (outerErr) { showError(cfg.resultId, outerErr.message); }
   }
 
   const SERVER_HANDLERS = {
@@ -931,24 +898,33 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 
       const orig = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Uploading ke 3 provider...</span>';
+      btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Uploading ke 4 provider...</span>';
 
       try {
         const b64 = await fileToB64(file);
         const res = await fetch('/api/imglink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            mime: file.type || 'application/octet-stream',
-            base64: b64
-          })
+          body: JSON.stringify({ filename: file.name, mime: file.type || 'application/octet-stream', base64: b64 })
         });
         const data = await res.json();
         const box = document.getElementById('il-result');
 
         if (!data.success) {
-          box.innerHTML = `<div class="error-msg">${esc(data.error || 'Upload gagal')}</div>`;
+          const details = (data.data && Array.isArray(data.data.results)) ? data.data.results : null;
+          if (details) {
+            const rows = details.map(r => `
+              <div class="upload-row failed">
+                <div class="upload-provider"><span class="upload-badge fail">${esc(r.label)}</span></div>
+                <div class="upload-url" style="color:var(--muted);font-style:italic">— ${esc(r.error || 'gagal')}</div>
+                <div class="upload-actions"></div>
+              </div>`).join('');
+            box.innerHTML = `
+              <div class="result-head"><div class="rh-left"><span class="dot" style="background:#f87171;box-shadow:0 0 8px #f87171"></span>${esc(data.error || 'Gagal')}</div></div>
+              <div class="result-body"><div class="upload-list">${rows}</div></div>`;
+          } else {
+            box.innerHTML = `<div class="error-msg">${esc(data.error || 'Upload gagal')}</div>`;
+          }
           box.style.display = 'block';
           return;
         }
@@ -959,9 +935,7 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
             return `
               <div class="upload-row">
                 <div class="upload-provider"><span class="upload-badge ok">${esc(r.label)}</span></div>
-                <div class="upload-url">
-                  <a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none;word-break:break-all">${esc(r.url)}</a>
-                </div>
+                <div class="upload-url"><a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none;word-break:break-all">${esc(r.url)}</a></div>
                 <div class="upload-actions">
                   <button class="btn-mini" onclick="FT_copy('${esc(r.url)}')">
                     <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy
@@ -995,17 +969,14 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 
     youtube: (btn) => {
       const url = document.getElementById('yt-url').value.trim();
-      const format = document.getElementById('yt-format').value;
-      const type = document.getElementById('yt-type').value;
       if (!url) return toast('Masukkan link YouTube', 'error');
-      callServer('youtube', { url, format, type }, 'yt-result', btn);
+      callServer('youtube', { url, format: document.getElementById('yt-format').value, type: document.getElementById('yt-type').value }, 'yt-result', btn);
     },
 
     tiktok: (btn) => {
       const url = document.getElementById('tt-url').value.trim();
-      const opt = document.getElementById('tt-opt').value;
       if (!url) return toast('Masukkan link TikTok', 'error');
-      callServer('tiktok', { url, option: opt }, 'tt-result', btn, (box, d) => {
+      callServer('tiktok', { url, option: document.getElementById('tt-opt').value }, 'tt-result', btn, (box, d) => {
         const info = d.data || d;
         box.innerHTML = `
           <div class="result-head"><div class="rh-left"><span class="dot"></span>Hasil · ${esc(info.videoLabel || '')}</div></div>
@@ -1047,9 +1018,8 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 
     shorturl: (btn) => {
       const url = document.getElementById('su-url').value.trim();
-      const alias = document.getElementById('su-alias').value.trim();
       if (!url) return toast('Masukkan link', 'error');
-      callServer('shorturl', { url, alias }, 'su-result', btn, (box, d) => {
+      callServer('shorturl', { url, alias: document.getElementById('su-alias').value.trim() }, 'su-result', btn, (box, d) => {
         const info = d.data || d;
         box.innerHTML = `
           <div class="result-head">
@@ -1066,17 +1036,8 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     facebook: (btn) => callServer('facebook', { url: document.getElementById('fb-url').value.trim(), quality: document.getElementById('fb-quality').value }, 'fb-result', btn),
     spotify: (btn) => callServer('spotify', { url: document.getElementById('sp-url').value.trim(), bitrate: document.getElementById('sp-bitrate').value }, 'sp-result', btn),
 
-    vercel: (btn) => quickPublish(btn, {
-      label: 'project', nameId: 'vc-name', group: 'vc',
-      pasteId: 'vc-html', fileId: 'vc-file-single', folderId: 'vc-folder',
-      resultId: 'vc-result', endpoint: '/api/vercel'
-    }),
-
-    netlify: (btn) => quickPublish(btn, {
-      label: 'site', nameId: 'nt-name', group: 'nt',
-      pasteId: 'nt-html', fileId: 'nt-file-single', folderId: 'nt-folder',
-      resultId: 'nt-result', endpoint: '/api/netlify'
-    }),
+    vercel: (btn) => quickPublish(btn, { label: 'project', nameId: 'vc-name', group: 'vc', pasteId: 'vc-html', fileId: 'vc-file-single', folderId: 'vc-folder', resultId: 'vc-result', endpoint: '/api/vercel' }),
+    netlify: (btn) => quickPublish(btn, { label: 'site', nameId: 'nt-name', group: 'nt', pasteId: 'nt-html', fileId: 'nt-file-single', folderId: 'nt-folder', resultId: 'nt-result', endpoint: '/api/netlify' }),
 
     'stalk-tiktok': (btn) => {
       const username = document.getElementById('stt-user').value.trim().replace(/^@/, '');
@@ -1110,9 +1071,8 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 
     'stalk-ff': (btn) => {
       const uid = document.getElementById('sff-uid').value.trim();
-      const region = document.getElementById('sff-region').value;
       if (!uid) return toast('Masukkan UID', 'error');
-      callServer('stalk-ff', { uid, region }, 'sff-result', btn, (box, d) => {
+      callServer('stalk-ff', { uid, region: document.getElementById('sff-region').value }, 'sff-result', btn, (box, d) => {
         const p = d.data || d;
         box.innerHTML = `
           <div class="result-head"><div class="rh-left"><span class="dot"></span>UID ${esc(uid)} · ${esc(p.region || '')}</div></div>
@@ -1167,7 +1127,7 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         ${pv('PT','Hasil akan muncul di sini','Preview gambar + tombol download.')}`
     },
     { id: 'imglink', num: '04', tag: 'Uploader', title: 'File to Link',
-      desc: 'Upload gambar atau file, dapat 3 link siap pakai dari 3 provider sekaligus.',
+      desc: 'Upload gambar atau file, dapat 4 link siap pakai dari 4 provider sekaligus.',
       body: `
         <div class="field">
           <label>Upload File</label>
@@ -1176,11 +1136,11 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         </div>
         <div class="field">
           <label>Info</label>
-          <div class="hint">File bakal diupload <b>paralel</b> ke 3 provider: <b>Catbox</b>, <b>Telegra.ph</b>, <b>0x0.st</b>. Hasilnya lo tinggal pilih yang paling cocok.</div>
+          <div class="hint">File diupload <b>paralel</b> ke <b>4 provider</b>: Catbox, Telegra.ph, 0x0.st, dan <b>OnlyFiles</b> (permanen). Tinggal pilih yang paling cocok.</div>
         </div>
-        <button class="btn-submit" id="il-btn" data-handler="imglink"><span>Upload & Dapatkan 3 Link</span></button>
+        <button class="btn-submit" id="il-btn" data-handler="imglink"><span>Upload & Dapatkan 4 Link</span></button>
         <div class="result-box" id="il-result" style="display:none"></div>
-        ${pv('IMG','Hasil dari 3 provider muncul di sini','Pilih URL mana yang mau dipakai.')}`
+        ${pv('IMG','Hasil dari 4 provider muncul di sini','Pilih URL mana yang mau dipakai.')}`
     },
     { id: 'imgbase64', num: '05', tag: 'Converter', title: 'Image to Base64',
       desc: 'Konversi gambar ke string base64 murni, tanpa prefix data URL.',
@@ -1460,4 +1420,4 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 </script>
 
 </body>
-        </html>
+  </html>
