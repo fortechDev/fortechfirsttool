@@ -4,8 +4,5 @@
   "private": true,
   "engines": {
     "node": "24.x"
-  },
-  "dependencies": {
-    "youtubei.js": "^13.0.0"
   }
 }
