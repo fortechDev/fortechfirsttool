@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <style>
 :root {
   --navy: #122c91; --blue: #2a6fdb; --teal: #48d6d2; --cyan: #81e9e6; --cream: #fefcbf;
@@ -17,7 +16,6 @@
   --teal-a: rgba(72,214,210,0.10); --teal-b: rgba(72,214,210,0.22);
   --shadow-lg: 0 32px 80px -28px rgba(0,0,0,0.85);
   --glow-teal: 0 0 40px rgba(72,214,210,0.18);
-  --glow-teal-strong: 0 0 60px rgba(72,214,210,0.32);
   --r-sm: 10px; --r-md: 16px; --r-lg: 22px; --r-xl: 30px;
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -116,23 +114,6 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--body);
 .tc-arrow svg path { stroke: var(--teal) !important; stroke-width: 2 !important; fill: none !important; stroke-linecap: round; stroke-linejoin: round; }
 .tool-card:hover .tc-arrow { background: var(--teal); border-color: var(--teal); transform: rotate(-45deg); box-shadow: 0 0 20px rgba(72,214,210,0.5); }
 .tool-card:hover .tc-arrow svg path { stroke: var(--bg) !important; }
-.featured-section { padding-bottom: 100px; }
-.featured { background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 50%, var(--bg-soft) 100%); border: 1px solid var(--border-2); border-radius: var(--r-xl); padding: 48px 52px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 52px; align-items: center; position: relative; overflow: hidden; cursor: pointer; transition: all 0.4s var(--ease-out); }
-.featured::before { content: ''; position: absolute; top: -40%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(72,214,210,0.14), transparent 65%); pointer-events: none; }
-.featured::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--teal), var(--cyan), var(--blue), transparent); opacity: 0.7; }
-.featured:hover { border-color: var(--border-3); box-shadow: var(--shadow-lg), var(--glow-teal-strong); transform: translateY(-3px); }
-.featured-left { position: relative; z-index: 1; }
-.featured-tag { display: inline-flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); background: linear-gradient(135deg, var(--navy), var(--blue)); padding: 6px 13px; border-radius: 999px; border: 1px solid rgba(129,233,230,0.25); margin-bottom: 22px; box-shadow: 0 0 20px rgba(42,111,219,0.4); }
-.featured-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--cream); box-shadow: 0 0 8px var(--cream); }
-.featured h3 { font-family: var(--font-display); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); margin-bottom: 14px; line-height: 1.1; }
-.featured p { font-size: 14px; color: var(--body); line-height: 1.7; margin-bottom: 28px; max-width: 520px; }
-.featured .btn-primary { width: auto; }
-.featured-right { display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
-.featured-mark { width: 220px; height: 220px; border-radius: 50%; border: 1px solid var(--border-2); display: grid; place-items: center; position: relative; }
-.featured-mark::before { content: ''; position: absolute; inset: 24px; border-radius: 50%; border: 1px dashed rgba(129,233,230,0.3); animation: rotate 40s linear infinite reverse; }
-.featured-mark::after { content: ''; position: absolute; inset: 48px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(72,214,210,0.4), transparent 70%), linear-gradient(135deg, var(--navy), var(--blue)); border: 1px solid rgba(129,233,230,0.35); box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 0 50px rgba(72,214,210,0.35); }
-.featured-mark svg { width: 46px; height: 46px; position: relative; z-index: 2; }
-.featured-mark svg * { stroke: var(--cream) !important; fill: none !important; stroke-width: 1.5 !important; stroke-linecap: round; stroke-linejoin: round; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(5,8,15,0.78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; visibility: hidden; transition: opacity 0.3s var(--ease), visibility 0.3s; }
 .modal-overlay.open { opacity: 1; visibility: visible; }
 .modal { background: linear-gradient(180deg, var(--surface) 0%, var(--bg-soft) 100%); border-radius: var(--r-xl); width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg), var(--glow-teal); transform: translateY(16px) scale(0.98); transition: transform 0.4s var(--ease-out); border: 1px solid var(--border-2); }
@@ -155,15 +136,13 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--body);
 .input, .textarea, .select { width: 100%; font-family: var(--font-body); font-size: 14px; color: var(--ink); background: var(--surface-2); border: 1.5px solid var(--border-2); border-radius: var(--r-sm); padding: 12px 14px; transition: all 0.25s var(--ease); outline: none; }
 .input::placeholder, .textarea::placeholder { color: var(--muted); }
 .input:focus, .textarea:focus, .select:focus { border-color: var(--teal); background: var(--surface-3); box-shadow: 0 0 0 4px rgba(72,214,210,0.10); }
-.textarea { resize: vertical; min-height: 130px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.6; }
+.textarea { resize: vertical; min-height: 130px; font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 12.5px; line-height: 1.6; }
 .select { cursor: pointer; }
 .select option { background: var(--surface); color: var(--ink); }
 .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.input-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 input[type="file"].input { padding: 10px 14px; cursor: pointer; }
 input[type="file"].input::file-selector-button { font-family: var(--font-body); font-size: 12px; font-weight: 700; color: var(--bg); background: var(--teal); border: none; border-radius: 6px; padding: 7px 14px; margin-right: 12px; cursor: pointer; transition: all 0.25s var(--ease); }
 input[type="file"].input::file-selector-button:hover { background: var(--cyan); box-shadow: 0 0 18px rgba(129,233,230,0.4); }
-input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 .btn-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--bg); background: linear-gradient(135deg, var(--teal), var(--cyan)); border: none; border-radius: var(--r-sm); padding: 14px 22px; cursor: pointer; transition: all 0.25s var(--ease); width: 100%; letter-spacing: -0.01em; position: relative; overflow: hidden; }
 .btn-submit span { position: relative; z-index: 1; }
 .btn-submit::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--blue), var(--navy)); opacity: 0; transition: opacity 0.3s var(--ease); }
@@ -230,9 +209,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
   .hero-visual .center-mark { inset: 118px; }
   .tools-grid { gap: 16px; }
   .tool-card { padding: 26px 22px 22px; min-height: 240px; }
-  .featured { padding: 40px 36px; gap: 36px; }
-  .featured h3 { font-size: 26px; }
-  .featured-mark { width: 180px; height: 180px; }
 }
 @media (max-width: 720px) {
   :root { --pad: 18px; }
@@ -261,12 +237,9 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
   .tc-icon svg { width: 17px; height: 17px; }
   .tool-card h3 { font-size: 11.5px; }
   .tool-card p { font-size: 9.5px; }
-  .featured { padding: 20px 18px; gap: 16px; grid-template-columns: 1.35fr 1fr; }
-  .featured h3 { font-size: 15px; }
-  .featured-mark { width: 100px; height: 100px; }
   .modal-head { padding: 18px 20px 14px; }
   .modal-body { padding: 18px 20px 22px; }
-  .input-row, .input-row-3 { grid-template-columns: 1fr; }
+  .input-row { grid-template-columns: 1fr; }
   .upload-row { grid-template-columns: 1fr; gap: 8px; }
   .upload-actions { justify-content: flex-end; }
   .site-footer { padding: 30px 0 40px; }
@@ -296,7 +269,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     </a>
     <nav class="nav">
       <a href="#tools">Tools</a>
-      <a href="#featured">Featured</a>
       <a href="#about">Tentang</a>
       <span class="badge">v1.0</span>
     </nav>
@@ -308,14 +280,13 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     <div class="hero-split">
       <div class="hero-left">
         <div class="eyebrow">All Tools, One Place</div>
-        <h1>Dua puluh <span class="accent">tools</span> untuk kerja cepat.</h1>
-        <p class="lead">Downloader, publisher, stalker, konverter, dan generator dalam satu tempat. Dirancang untuk developer, kreator, dan siapa pun yang butuh alat serba bisa.</p>
+        <h1>Delapan <span class="accent">tools</span> untuk kerja cepat.</h1>
+        <p class="lead">Downloader, publisher, uploader, dan stalker dalam satu tempat. Dirancang untuk developer, kreator, dan siapa pun yang butuh alat serba bisa.</p>
         <div class="hero-actions">
           <a href="#tools" class="btn-primary">Jelajahi Tools <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-          <a href="#featured" class="btn-secondary">Lihat Featured <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
         <div class="hero-stats">
-          <div class="stat"><b>20</b><span>Tools Aktif</span></div>
+          <div class="stat"><b>08</b><span>Tools Aktif</span></div>
           <div class="stat"><b>01</b><span>File Tunggal</span></div>
           <div class="stat"><b>∞</b><span>Gratis</span></div>
         </div>
@@ -340,31 +311,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
       <p class="sh-note">Klik salah satu kartu untuk membuka</p>
     </div>
     <div class="tools-grid" id="toolsGrid"></div>
-  </div>
-</section>
-
-<section class="featured-section" id="featured">
-  <div class="shell">
-    <div class="section-head">
-      <div class="sh-left"><span class="sh-num">02</span><h2>Featured Tool</h2></div>
-      <p class="sh-note">Tool ke-20 · Highlight bulan ini</p>
-    </div>
-    <article class="featured" data-tool="stalk-ff">
-      <div class="featured-left">
-        <div class="featured-tag">Featured</div>
-        <h3>Free Fire Stalker</h3>
-        <p>Cek profil player Free Fire via UID: nickname, level, rank, guild, dan statistik. Dirancang untuk tim riset dan komunitas.</p>
-        <a class="btn-primary">Coba Sekarang <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      </div>
-      <div class="featured-right">
-        <div class="featured-mark">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 2l8 5v7c0 5-3.5 8-8 10-4.5-2-8-5-8-10V7z"/>
-            <path d="M12 8l3 5a3 3 0 11-6 0z"/>
-          </svg>
-        </div>
-      </div>
-    </article>
   </div>
 </section>
 
@@ -423,22 +369,10 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     tiktok: `<svg viewBox="0 0 24 24"><circle cx="9" cy="17" r="3"/><path d="M12 17V4"/><path d="M12 4c0 3 2 5 5 5"/></svg>`,
     pinterest: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M8 12c0-2.2 1.8-4 4-4"/></svg>`,
     imglink: `<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M3 17l5-5 4 4 3-3 6 6"/><path d="M17 3v4M15 5h4"/></svg>`,
-    imgbase64: `<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l-2 3 2 3M14 9l2 3-2 3"/></svg>`,
-    qr: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 18h3M18 14v3"/></svg>`,
-    password: `<svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l2 2M14 9l2 2"/></svg>`,
-    json: `<svg viewBox="0 0 24 24"><path d="M8 4H6a2 2 0 00-2 2v4c0 1-.5 2-2 2 1.5 0 2 1 2 2v4a2 2 0 002 2h2"/><path d="M16 4h2a2 2 0 012 2v4c0 1 .5 2 2 2-1.5 0-2 1-2 2v4a2 2 0 01-2 2h-2"/></svg>`,
-    palette: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="12" cy="12" r="1.2"/></svg>`,
-    uuid: `<svg viewBox="0 0 24 24"><path d="M7 5h10M7 9h10M7 13h10M7 17h10"/><path d="M10 3v18M14 3v18"/></svg>`,
-    markdown: `<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M6 15V9l3 3 3-3v6M16 9v6M14 13l2 2 2-2"/></svg>`,
     shorturl: `<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1"/></svg>`,
-    instagram: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>`,
-    facebook: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14 8h-1.5A1.5 1.5 0 0011 9.5V12H9v2.5h2V19"/></svg>`,
-    spotify: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M7 10c3-1 7-1 10 1"/><path d="M7.5 13c2.5-.8 6-.6 8.5 1"/><path d="M8 16c2-.6 4.5-.4 6.5.8"/></svg>`,
-    speedtest: `<svg viewBox="0 0 24 24"><path d="M4 16a8 8 0 1116 0"/><path d="M12 16l4-4"/><circle cx="12" cy="16" r="1"/></svg>`,
     vercel: `<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/></svg>`,
     netlify: `<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 018-8"/><path d="M20 12a8 8 0 01-8 8"/><path d="M6 12h12"/></svg>`,
-    'stalk-tiktok': `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><circle cx="11" cy="11" r="2.5"/><path d="M11 2v3M11 17v3M2 11h3M17 11h3"/></svg>`,
-    'stalk-ff': `<svg viewBox="0 0 24 24"><path d="M12 2l8 5v7c0 5-3.5 8-8 10-4.5-2-8-5-8-10V7z"/><path d="M12 8l3 5a3 3 0 11-6 0z"/></svg>`
+    'stalk-tiktok': `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><circle cx="11" cy="11" r="2.5"/><path d="M11 2v3M11 17v3M2 11h3M17 11h3"/></svg>`
   };
 
   const API = {
@@ -507,280 +441,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     if (!ext) return false;
     const binaryExts = ['png','jpg','jpeg','gif','webp','ico','bmp','woff','woff2','ttf','otf','eot','mp3','mp4','webm','pdf','zip'];
     return binaryExts.includes(ext[1]);
-  }
-
-  function runImageBase64() {
-    const file = document.getElementById('ib-file').files[0];
-    const lineBreak = document.getElementById('ib-lb').value;
-    if (!file) return toast('Pilih gambar dulu', 'error');
-    const reader = new FileReader();
-    reader.onload = e => {
-      let b64 = e.target.result.split(',')[1];
-      if (lineBreak === 'rfc') b64 = b64.replace(/(.{76})/g, '$1\n');
-      const box = document.getElementById('ib-result');
-      box.innerHTML = `
-        <div class="result-head">
-          <div class="rh-left"><span class="dot"></span>Base64 · ${esc(file.name)}</div>
-          <button class="btn-mini" onclick="FT_copy(document.getElementById('ib-out').textContent)">
-            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy
-          </button>
-        </div>
-        <div class="result-body">
-          <pre id="ib-out">${esc(b64)}</pre>
-          <div class="row" style="margin-top:12px">
-            <div class="kv"><span>Panjang</span><b>${fmtNum(b64.length)} char</b></div>
-            <div class="kv"><span>Ukuran Asli</span><b>${(file.size/1024).toFixed(1)} KB</b></div>
-          </div>
-        </div>`;
-      box.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function runQR() {
-    const text = document.getElementById('qr-text').value.trim();
-    const size = document.getElementById('qr-size').value;
-    const ecc = document.getElementById('qr-ecc').value;
-    const color = document.getElementById('qr-color').value.replace('#', '');
-    if (!text) return toast('Isi teks dulu', 'error');
-    const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&ecc=${ecc}&color=${color}&bgcolor=05080f&data=${encodeURIComponent(text)}`;
-    const box = document.getElementById('qr-result');
-    box.innerHTML = `
-      <div class="result-head">
-        <div class="rh-left"><span class="dot"></span>QR Code · ${size}px</div>
-        <a class="btn-mini" href="${url}" target="_blank" download="qr.png">
-          <svg viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg>Download
-        </a>
-      </div>
-      <div class="result-body" style="text-align:center">
-        <img class="preview-img" src="${url}" alt="QR Code" style="max-width:260px;margin:0 auto 14px;display:block" />
-        <a class="btn-mini" href="${url}" target="_blank">Buka di tab baru</a>
-      </div>`;
-    box.style.display = 'block';
-  }
-
-  function runPassword() {
-    const len = Math.max(4, Math.min(128, parseInt(document.getElementById('pw-len').value, 10) || 16));
-    const upper = document.getElementById('pw-upper').value === '1';
-    const lower = document.getElementById('pw-lower').value === '1';
-    const nums = document.getElementById('pw-nums').value === '1';
-    const syms = document.getElementById('pw-syms').value === '1';
-    let pool = '';
-    if (upper) pool += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    if (lower) pool += 'abcdefghijklmnopqrstuvwxyz';
-    if (nums) pool += '0123456789';
-    if (syms) pool += '!@#$%^&*()_+-=[]{};:,.<>?';
-    if (!pool) return toast('Aktifkan minimal 1 tipe karakter', 'error');
-    const arr = new Uint32Array(len);
-    crypto.getRandomValues(arr);
-    let pw = '';
-    for (let i = 0; i < len; i++) pw += pool[arr[i] % pool.length];
-    const box = document.getElementById('pw-result');
-    box.innerHTML = `
-      <div class="result-head">
-        <div class="rh-left"><span class="dot"></span>Password · ${len} karakter</div>
-        <button class="btn-mini" onclick="FT_copy('${pw}')">
-          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy
-        </button>
-      </div>
-      <div class="result-body"><pre style="font-size:15px;text-align:center;letter-spacing:0.5px">${esc(pw)}</pre></div>`;
-    box.style.display = 'block';
-  }
-
-  function runJSON() {
-    const input = document.getElementById('js-input').value.trim();
-    const indent = document.getElementById('js-indent').value;
-    const action = document.getElementById('js-action').value;
-    if (!input) return toast('Input masih kosong', 'error');
-    let parsed;
-    try { parsed = JSON.parse(input); }
-    catch (e) { return showError('js-result', 'JSON tidak valid: ' + e.message); }
-    let out;
-    if (action === 'minify') out = JSON.stringify(parsed);
-    else if (action === 'validate') out = '✓ JSON valid (' + countKeys(parsed) + ' key total)';
-    else {
-      const sp = indent === '4' ? 4 : (indent === 'tab' ? '\t' : 2);
-      out = JSON.stringify(parsed, null, sp);
-    }
-    const box = document.getElementById('js-result');
-    box.innerHTML = `
-      <div class="result-head">
-        <div class="rh-left"><span class="dot"></span>Hasil · ${action}</div>
-        <button class="btn-mini" onclick="FT_copy(document.getElementById('js-out').textContent)">
-          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy
-        </button>
-      </div>
-      <div class="result-body"><pre id="js-out">${esc(out)}</pre></div>`;
-    box.style.display = 'block';
-    function countKeys(o) {
-      let n = 0;
-      (function walk(x) {
-        if (x && typeof x === 'object') {
-          Object.keys(x).forEach(k => { n++; walk(x[k]); });
-        }
-      })(o);
-      return n;
-    }
-  }
-
-  function runPalette() {
-    const base = document.getElementById('pal-base').value;
-    const mode = document.getElementById('pal-mode').value;
-    const hsl = hexToHsl(base);
-    const colors = generatePalette(hsl, mode);
-    const box = document.getElementById('pal-result');
-    box.innerHTML = `
-      <div class="result-head"><div class="rh-left"><span class="dot"></span>Palette · ${mode}</div></div>
-      <div class="result-body">
-        <div style="display:flex;gap:6px;border-radius:8px;overflow:hidden;margin-bottom:14px;height:60px">
-          ${colors.map(c => `<div style="flex:1;background:${c};cursor:pointer" onclick="FT_copy('${c}')" title="${c}"></div>`).join('')}
-        </div>
-        <pre>${colors.map((c, i) => `${String(i+1).padStart(2,'0')}  ${c}  ${hslToRgb(c).join(', ')}`).join('\n')}</pre>
-      </div>`;
-    box.style.display = 'block';
-  }
-
-  function hexToHsl(hex) {
-    hex = hex.replace('#','');
-    const r = parseInt(hex.substr(0,2),16)/255;
-    const g = parseInt(hex.substr(2,2),16)/255;
-    const b = parseInt(hex.substr(4,2),16)/255;
-    const max = Math.max(r,g,b), min = Math.min(r,g,b);
-    let h, s, l = (max+min)/2;
-    if (max === min) { h = s = 0; }
-    else {
-      const d = max - min;
-      s = l > 0.5 ? d/(2-max-min) : d/(max+min);
-      switch (max) {
-        case r: h = (g-b)/d + (g<b?6:0); break;
-        case g: h = (b-r)/d + 2; break;
-        case b: h = (r-g)/d + 4; break;
-      }
-      h /= 6;
-    }
-    return { h: h*360, s: s*100, l: l*100 };
-  }
-  function hslToHex(h, s, l) {
-    s/=100; l/=100;
-    const k = n => (n + h/30) % 12;
-    const a = s * Math.min(l, 1-l);
-    const f = n => l - a * Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n), 1)));
-    const toHex = x => Math.round(x*255).toString(16).padStart(2,'0');
-    return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
-  }
-  function hslToRgb(hex) {
-    hex = hex.replace('#','');
-    return [parseInt(hex.substr(0,2),16), parseInt(hex.substr(2,2),16), parseInt(hex.substr(4,2),16)];
-  }
-  function generatePalette({h,s,l}, mode) {
-    let hues;
-    switch (mode) {
-      case 'complementary': hues = [h, (h+180)%360, (h+180)%360, h, h]; break;
-      case 'triadic': hues = [h, (h+120)%360, (h+240)%360, h, (h+120)%360]; break;
-      case 'tetradic': hues = [h, (h+90)%360, (h+180)%360, (h+270)%360, h]; break;
-      case 'monochromatic': hues = [h,h,h,h,h]; break;
-      default: hues = [h-30, h-15, h, h+15, h+30];
-    }
-    return hues.map((hh, i) => {
-      const ll = mode === 'monochromatic'
-        ? Math.max(15, Math.min(90, l - 30 + i*15))
-        : Math.max(20, Math.min(85, l - 20 + i*10));
-      return hslToHex((hh+360)%360, s, ll);
-    });
-  }
-
-  function runUUID() {
-    const version = document.getElementById('uu-version').value;
-    const count = parseInt(document.getElementById('uu-count').value, 10);
-    const format = document.getElementById('uu-format').value;
-    const list = [];
-    for (let i = 0; i < count; i++) {
-      let id = version === 'v1' ? uuidv1() : uuidv4();
-      if (format === 'upper') id = id.toUpperCase();
-      else if (format === 'nodash') id = id.replace(/-/g, '');
-      list.push(id);
-    }
-    const box = document.getElementById('uu-result');
-    box.innerHTML = `
-      <div class="result-head">
-        <div class="rh-left"><span class="dot"></span>${count} × ${version}</div>
-        <button class="btn-mini" onclick="FT_copy(document.getElementById('uu-out').textContent)">
-          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy All
-        </button>
-      </div>
-      <div class="result-body"><pre id="uu-out">${list.map(esc).join('\n')}</pre></div>`;
-    box.style.display = 'block';
-  }
-  function uuidv4() {
-    const b = new Uint8Array(16);
-    crypto.getRandomValues(b);
-    b[6] = (b[6] & 0x0f) | 0x40;
-    b[8] = (b[8] & 0x3f) | 0x80;
-    const h = [...b].map(x => x.toString(16).padStart(2,'0'));
-    return `${h.slice(0,4).join('')}-${h.slice(4,6).join('')}-${h.slice(6,8).join('')}-${h.slice(8,10).join('')}-${h.slice(10,16).join('')}`;
-  }
-  function uuidv1() {
-    const t = Date.now();
-    const h = t.toString(16).padStart(12, '0').slice(-12);
-    const r = crypto.getRandomValues(new Uint8Array(10));
-    const rh = [...r].map(x => x.toString(16).padStart(2,'0')).join('');
-    return `${h.slice(0,8)}-${h.slice(8,12)}-1${rh.slice(0,3)}-${rh.slice(3,7)}-${rh.slice(7,19)}`;
-  }
-
-  function runMarkdown() {
-    const input = document.getElementById('md-input').value;
-    const mode = document.getElementById('md-mode').value;
-    if (!input.trim()) return toast('Input masih kosong', 'error');
-    let html;
-    try {
-      html = (typeof marked !== 'undefined' && marked.parse) ? marked.parse(input) : esc(input).replace(/\n/g,'<br>');
-    } catch (e) {
-      html = '<em>Gagal render markdown.</em>';
-    }
-    const box = document.getElementById('md-result');
-    const out = mode === 'html'
-      ? `<pre>${esc(html)}</pre>`
-      : `<div style="color:var(--ink);font-size:14px;line-height:1.7">${html}</div>`;
-    box.innerHTML = `
-      <div class="result-head"><div class="rh-left"><span class="dot"></span>Preview · ${mode}</div></div>
-      <div class="result-body">${out}</div>`;
-    box.style.display = 'block';
-  }
-
-  async function runSpeedTest() {
-    const btn = document.getElementById('st-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span><span style="margin-left:8px">Mengukur kecepatan...</span>';
-    const box = document.getElementById('st-result');
-    box.innerHTML = `
-      <div class="result-head"><div class="rh-left"><span class="dot"></span>Mengukur...</div></div>
-      <div class="result-body"><pre>Ping: - ms\nDownload: - Mbps\nUpload: - Mbps</pre></div>`;
-    box.style.display = 'block';
-    try {
-      const t0 = performance.now();
-      await fetch('https://speed.cloudflare.com/__down?bytes=1000', { cache: 'no-store' });
-      const ping = Math.round(performance.now() - t0);
-      const t1 = performance.now();
-      const res = await fetch('https://speed.cloudflare.com/__down?bytes=10000000', { cache: 'no-store' });
-      const blob = await res.blob();
-      const dlTime = (performance.now() - t1) / 1000;
-      const dlSpeed = (blob.size * 8 / 1e6 / dlTime).toFixed(2);
-      box.innerHTML = `
-        <div class="result-head"><div class="rh-left"><span class="dot"></span>Selesai</div></div>
-        <div class="result-body">
-          <div class="row">
-            <div class="kv"><span>Ping</span><b>${ping} ms</b></div>
-            <div class="kv"><span>Download</span><b>${dlSpeed} Mbps</b></div>
-            <div class="kv"><span>Data</span><b>${(blob.size/1e6).toFixed(1)} MB</b></div>
-          </div>
-        </div>`;
-      toast('Speed test selesai', 'success');
-    } catch (e) {
-      showError('st-result', 'Gagal mengukur: ' + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<span>Mulai Test</span>';
-    }
   }
 
   async function callServer(endpoint, payload, resultElId, btn, renderFn) {
@@ -890,6 +550,30 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 
   const SERVER_HANDLERS = {
 
+    youtube: (btn) => {
+      const url = document.getElementById('yt-url').value.trim();
+      if (!url) return toast('Masukkan link YouTube', 'error');
+      const format = document.getElementById('yt-format').value;
+      callServer('youtube', { url, format }, 'yt-result', btn, (box, d) => {
+        const info = d.data || d;
+        box.innerHTML = `
+          <div class="result-head"><div class="rh-left"><span class="dot"></span>Konversi selesai · ${esc(info.format || '').toUpperCase()}</div></div>
+          <div class="result-body">
+            ${info.thumbnail ? `<img class="preview-img" src="${esc(info.thumbnail)}" />` : ''}
+            <div class="row">
+              <div class="kv"><span>Judul</span><b>${esc(info.title || '-')}</b></div>
+              <div class="kv"><span>Format</span><b>${esc((info.format || '').toUpperCase())}</b></div>
+            </div>
+            <div class="actions">
+              ${info.download ? `<a class="btn-mini" href="${esc(info.download)}" target="_blank" rel="noopener">Download</a>` : ''}
+              ${info.download ? `<button class="btn-mini" onclick="FT_copy('${esc(info.download)}')">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>Copy Link
+              </button>` : ''}
+            </div>
+          </div>`;
+      });
+    },
+
     imglink: async (btn) => {
       const input = document.getElementById('il-file');
       const file = input.files && input.files[0];
@@ -967,12 +651,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
       }
     },
 
-    youtube: (btn) => {
-      const url = document.getElementById('yt-url').value.trim();
-      if (!url) return toast('Masukkan link YouTube', 'error');
-      callServer('youtube', { url, format: document.getElementById('yt-format').value, type: document.getElementById('yt-type').value }, 'yt-result', btn);
-    },
-
     tiktok: (btn) => {
       const url = document.getElementById('tt-url').value.trim();
       if (!url) return toast('Masukkan link TikTok', 'error');
@@ -1032,10 +710,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
       });
     },
 
-    instagram: (btn) => callServer('instagram', { url: document.getElementById('ig-url').value.trim(), type: document.getElementById('ig-type').value }, 'ig-result', btn),
-    facebook: (btn) => callServer('facebook', { url: document.getElementById('fb-url').value.trim(), quality: document.getElementById('fb-quality').value }, 'fb-result', btn),
-    spotify: (btn) => callServer('spotify', { url: document.getElementById('sp-url').value.trim(), bitrate: document.getElementById('sp-bitrate').value }, 'sp-result', btn),
-
     vercel: (btn) => quickPublish(btn, { label: 'project', nameId: 'vc-name', group: 'vc', pasteId: 'vc-html', fileId: 'vc-file-single', folderId: 'vc-folder', resultId: 'vc-result', endpoint: '/api/vercel' }),
     netlify: (btn) => quickPublish(btn, { label: 'site', nameId: 'nt-name', group: 'nt', pasteId: 'nt-html', fileId: 'nt-file-single', folderId: 'nt-folder', resultId: 'nt-result', endpoint: '/api/netlify' }),
 
@@ -1067,30 +741,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
             </div>
           </div>`;
       });
-    },
-
-    'stalk-ff': (btn) => {
-      const uid = document.getElementById('sff-uid').value.trim();
-      if (!uid) return toast('Masukkan UID', 'error');
-      callServer('stalk-ff', { uid, region: document.getElementById('sff-region').value }, 'sff-result', btn, (box, d) => {
-        const p = d.data || d;
-        box.innerHTML = `
-          <div class="result-head"><div class="rh-left"><span class="dot"></span>UID ${esc(uid)} · ${esc(p.region || '')}</div></div>
-          <div class="result-body">
-            <div class="row">
-              <div class="kv"><span>Nickname</span><b>${esc(p.nickname || '-')}</b></div>
-              <div class="kv"><span>Level</span><b>${fmtNum(p.level)}</b></div>
-            </div>
-            <div class="row">
-              <div class="kv"><span>Rank</span><b>${esc(p.rank || '-')}</b></div>
-              <div class="kv"><span>Rank Points</span><b>${fmtNum(p.rankPoints)}</b></div>
-            </div>
-            <div class="row">
-              <div class="kv"><span>Guild</span><b>${esc(p.guild || '-')}</b></div>
-              <div class="kv"><span>Likes</span><b>${fmtNum(p.likes)}</b></div>
-            </div>
-          </div>`;
-      });
     }
   };
 
@@ -1098,16 +748,13 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
 
   const TOOLS = [
     { id: 'youtube', num: '01', tag: 'Downloader', title: 'YouTube Downloader',
-      desc: 'Ambil video atau audio YouTube dalam kualitas tinggi.',
+      desc: 'Konversi video YouTube ke MP3 atau MP4. Cukup tempel link, tunggu, download.',
       body: `
-        <div class="field"><label>Link Video YouTube</label><input id="yt-url" class="input" type="text" placeholder="https://www.youtube.com/watch?v=..." /></div>
-        <div class="input-row">
-          <div class="field"><label>Format</label><select id="yt-format" class="select"><option>MP4 · 1080p</option><option>MP4 · 720p</option><option>MP4 · 480p</option><option>MP3 · 320kbps</option><option>MP3 · 128kbps</option></select></div>
-          <div class="field"><label>Tipe</label><select id="yt-type" class="select"><option>Video + Audio</option><option>Video Only</option><option>Audio Only</option></select></div>
-        </div>
-        <button class="btn-submit" id="yt-btn" data-handler="youtube"><span>Unduh Video</span></button>
+        <div class="field"><label>Link Video YouTube</label><input id="yt-url" class="input" type="text" placeholder="https://www.youtube.com/watch?v=..." /><div class="hint">Mendukung video, Shorts, dan youtu.be.</div></div>
+        <div class="field"><label>Format Output</label><select id="yt-format" class="select"><option value="mp3">MP3 · Audio</option><option value="mp4">MP4 · Video</option></select></div>
+        <button class="btn-submit" id="yt-btn" data-handler="youtube"><span>Konversi & Download</span></button>
         <div class="result-box" id="yt-result" style="display:none"></div>
-        ${pv('YT','Hasil akan muncul di sini','Thumbnail, judul, dan daftar format tersedia.')}`
+        ${pv('YT','Hasil muncul di sini','Proses konversi 15-50 detik.')}`
     },
     { id: 'tiktok', num: '02', tag: 'Downloader', title: 'TikTok Downloader',
       desc: 'Unduh video TikTok tanpa watermark, lengkap dengan audio original.',
@@ -1136,91 +783,13 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         </div>
         <div class="field">
           <label>Info</label>
-          <div class="hint">File diupload <b>paralel</b> ke <b>4 provider</b>: Catbox, Telegra.ph, 0x0.st, dan <b>OnlyFiles</b> (permanen). Tinggal pilih yang paling cocok.</div>
+          <div class="hint">File diupload <b>paralel</b> ke <b>4 provider</b>: Catbox, Telegra.ph, 0x0.st, dan <b>OnlyFiles</b> (permanen).</div>
         </div>
         <button class="btn-submit" id="il-btn" data-handler="imglink"><span>Upload & Dapatkan 4 Link</span></button>
         <div class="result-box" id="il-result" style="display:none"></div>
         ${pv('IMG','Hasil dari 4 provider muncul di sini','Pilih URL mana yang mau dipakai.')}`
     },
-    { id: 'imgbase64', num: '05', tag: 'Converter', title: 'Image to Base64',
-      desc: 'Konversi gambar ke string base64 murni, tanpa prefix data URL.',
-      body: `
-        <div class="field"><label>Upload Gambar</label><input id="ib-file" class="input" type="file" accept="image/*" /></div>
-        <div class="field"><label>Line Break</label><select id="ib-lb" class="select"><option value="none">Tanpa line break</option><option value="rfc">Line break tiap 76 karakter</option></select></div>
-        <button class="btn-submit" id="ib-btn"><span>Konversi</span></button>
-        <div class="result-box" id="ib-result" style="display:none"></div>
-        ${pv('B64','Base64 muncul di sini','Siap dipakai untuk API, JSON, atau database.')}`
-    },
-    { id: 'qr', num: '06', tag: 'Generator', title: 'QR Code Generator',
-      desc: 'Buat QR code dari teks, link, atau data apa pun.',
-      body: `
-        <div class="field"><label>Isi QR Code</label><textarea id="qr-text" class="textarea" placeholder="https://fortech.dev atau teks apa pun..."></textarea></div>
-        <div class="input-row-3">
-          <div class="field"><label>Ukuran</label><select id="qr-size" class="select"><option value="256">256 px</option><option value="512">512 px</option><option value="1024">1024 px</option></select></div>
-          <div class="field"><label>Koreksi</label><select id="qr-ecc" class="select"><option value="L">L (7%)</option><option value="M" selected>M (15%)</option><option value="Q">Q (25%)</option><option value="H">H (30%)</option></select></div>
-          <div class="field"><label>Warna</label><input id="qr-color" class="input" type="color" value="#fefcbf" /></div>
-        </div>
-        <button class="btn-submit" id="qr-btn"><span>Generate QR</span></button>
-        <div class="result-box" id="qr-result" style="display:none"></div>
-        ${pv('QR','QR Code muncul di sini','Download sebagai PNG.')}`
-    },
-    { id: 'password', num: '07', tag: 'Generator', title: 'Password Generator',
-      desc: 'Bikin password kuat dengan opsi lengkap.',
-      body: `
-        <div class="field"><label>Panjang Password</label><input id="pw-len" class="input" type="text" value="16" /></div>
-        <div class="input-row">
-          <div class="field"><label>Huruf Besar</label><select id="pw-upper" class="select"><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>
-          <div class="field"><label>Huruf Kecil</label><select id="pw-lower" class="select"><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>
-          <div class="field"><label>Angka</label><select id="pw-nums" class="select"><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>
-          <div class="field"><label>Simbol</label><select id="pw-syms" class="select"><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>
-        </div>
-        <button class="btn-submit" id="pw-btn"><span>Generate Password</span></button>
-        <div class="result-box" id="pw-result" style="display:none"></div>
-        ${pv('PWD','Password muncul di sini','Copy dengan satu klik.')}`
-    },
-    { id: 'json', num: '08', tag: 'Developer', title: 'JSON Formatter',
-      desc: 'Rapikan, minify, dan validasi JSON langsung di browser.',
-      body: `
-        <div class="field"><label>Input JSON</label><textarea id="js-input" class="textarea" placeholder='{"name":"Fortech","version":1}'></textarea></div>
-        <div class="input-row">
-          <div class="field"><label>Indentasi</label><select id="js-indent" class="select"><option value="2">2 spasi</option><option value="4">4 spasi</option><option value="tab">Tab</option></select></div>
-          <div class="field"><label>Aksi</label><select id="js-action" class="select"><option value="beautify">Beautify</option><option value="minify">Minify</option><option value="validate">Validate saja</option></select></div>
-        </div>
-        <button class="btn-submit" id="js-btn"><span>Proses JSON</span></button>
-        <div class="result-box" id="js-result" style="display:none"></div>
-        ${pv('{}','Hasil muncul di sini','JSON rapi, valid, atau error message.')}`
-    },
-    { id: 'palette', num: '09', tag: 'Design', title: 'Color Palette Generator',
-      desc: 'Bikin palet warna harmonis dari satu base color.',
-      body: `
-        <div class="field"><label>Base Color</label><input id="pal-base" class="input" type="color" value="#48d6d2" /></div>
-        <div class="field"><label>Mode Harmoni</label><select id="pal-mode" class="select"><option value="analogous">Analogous</option><option value="complementary">Complementary</option><option value="triadic">Triadic</option><option value="tetradic">Tetradic</option><option value="monochromatic">Monochromatic</option></select></div>
-        <button class="btn-submit" id="pal-btn"><span>Generate Palette</span></button>
-        <div class="result-box" id="pal-result" style="display:none"></div>
-        ${pv('CLR','Palet muncul di sini','Copy kode HEX atau RGB langsung.')}`
-    },
-    { id: 'uuid', num: '10', tag: 'Generator', title: 'UUID Generator',
-      desc: 'Buat UUID v4 (dan v1) dalam jumlah banyak sekaligus.',
-      body: `
-        <div class="input-row">
-          <div class="field"><label>Versi</label><select id="uu-version" class="select"><option value="v4">UUID v4 (random)</option><option value="v1">UUID v1 (timestamp)</option></select></div>
-          <div class="field"><label>Jumlah</label><select id="uu-count" class="select"><option value="1">1</option><option value="5">5</option><option value="10">10</option><option value="50">50</option><option value="100">100</option></select></div>
-        </div>
-        <div class="field"><label>Format</label><select id="uu-format" class="select"><option value="lower">Lowercase (default)</option><option value="upper">Uppercase</option><option value="nodash">Tanpa dash</option></select></div>
-        <button class="btn-submit" id="uu-btn"><span>Generate UUID</span></button>
-        <div class="result-box" id="uu-result" style="display:none"></div>
-        ${pv('UID','UUID muncul di sini','Copy satu atau copy semua.')}`
-    },
-    { id: 'markdown', num: '11', tag: 'Developer', title: 'Markdown Previewer',
-      desc: 'Tulis Markdown dan lihat hasil render-nya real-time.',
-      body: `
-        <div class="field"><label>Markdown Input</label><textarea id="md-input" class="textarea" placeholder="# Halo&#10;&#10;Ini **bold** dan *italic*."></textarea></div>
-        <div class="field"><label>Mode</label><select id="md-mode" class="select"><option value="preview">Preview render</option><option value="html">HTML output</option></select></div>
-        <button class="btn-submit" id="md-btn"><span>Render Markdown</span></button>
-        <div class="result-box" id="md-result" style="display:none"></div>
-        ${pv('MD','Preview muncul di sini','Hasil render HTML real-time.')}`
-    },
-    { id: 'shorturl', num: '12', tag: 'Utility', title: 'URL Shortener',
+    { id: 'shorturl', num: '05', tag: 'Utility', title: 'URL Shortener',
       desc: 'Pendekkan link panjang jadi lebih ringkas dan mudah dibagikan.',
       body: `
         <div class="field"><label>Link Panjang</label><input id="su-url" class="input" type="text" placeholder="https://contoh.com/link/yang/panjang/..." /></div>
@@ -1229,42 +798,7 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         <div class="result-box" id="su-result" style="display:none"></div>
         ${pv('URL','Link pendek muncul di sini','Copy dan bagikan.')}`
     },
-    { id: 'instagram', num: '13', tag: 'Downloader', title: 'Instagram Downloader',
-      desc: 'Unduh foto, video, Reels, dan IGTV tanpa watermark.',
-      body: `
-        <div class="field"><label>Link Instagram</label><input id="ig-url" class="input" type="text" placeholder="https://www.instagram.com/p/..." /></div>
-        <div class="field"><label>Tipe Unduhan</label><select id="ig-type" class="select"><option>Video · HD</option><option>Video · SD</option><option>Foto · Original</option></select></div>
-        <button class="btn-submit" id="ig-btn" data-handler="instagram"><span>Unduh Media</span></button>
-        <div class="result-box" id="ig-result" style="display:none"></div>
-        ${pv('IG','Media muncul di sini','Preview + tombol download per item.')}`
-    },
-    { id: 'facebook', num: '14', tag: 'Downloader', title: 'Facebook Downloader',
-      desc: 'Simpan video dari Facebook dalam kualitas HD atau SD.',
-      body: `
-        <div class="field"><label>Link Video Facebook</label><input id="fb-url" class="input" type="text" placeholder="https://www.facebook.com/watch?v=..." /></div>
-        <div class="field"><label>Kualitas</label><select id="fb-quality" class="select"><option>HD (720p-1080p)</option><option>SD (360p-480p)</option><option>Audio Only (MP3)</option></select></div>
-        <button class="btn-submit" id="fb-btn" data-handler="facebook"><span>Unduh Video</span></button>
-        <div class="result-box" id="fb-result" style="display:none"></div>
-        ${pv('FB','Hasil muncul di sini','Preview video + daftar format.')}`
-    },
-    { id: 'spotify', num: '15', tag: 'Downloader', title: 'Spotify Downloader',
-      desc: 'Ambil audio dari link track Spotify dalam format MP3.',
-      body: `
-        <div class="field"><label>Link Track Spotify</label><input id="sp-url" class="input" type="text" placeholder="https://open.spotify.com/track/..." /></div>
-        <div class="field"><label>Bitrate</label><select id="sp-bitrate" class="select"><option>320 kbps</option><option>256 kbps</option><option>128 kbps</option></select></div>
-        <button class="btn-submit" id="sp-btn" data-handler="spotify"><span>Ambil Audio</span></button>
-        <div class="result-box" id="sp-result" style="display:none"></div>
-        ${pv('SPT','Hasil muncul di sini','Metadata lengkap: judul, artist, album, cover.')}`
-    },
-    { id: 'speedtest', num: '16', tag: 'Utility', title: 'Internet Speed Test',
-      desc: 'Cek kecepatan download, upload, dan ping koneksimu.',
-      body: `
-        <div class="field"><label>Info</label><div class="hint">Uji kecepatan via Cloudflare speed endpoint. Membutuhkan ~10 MB data.</div></div>
-        <button class="btn-submit" id="st-btn"><span>Mulai Test</span></button>
-        <div class="result-box" id="st-result" style="display:none"></div>
-        ${pv('NET','Hasil muncul di sini','Ping, download, dan data yang diuji.')}`
-    },
-    { id: 'vercel', num: '17', tag: 'Publisher', title: 'Vercel Quick Publish',
+    { id: 'vercel', num: '06', tag: 'Publisher', title: 'Vercel Quick Publish',
       desc: 'Publish HTML kamu ke Vercel dalam 1 klik. Hasil: nama.vercel.app',
       body: `
         <div class="field"><label>Nama Project</label><input id="vc-name" class="input" type="text" placeholder="my-portfolio" /><div class="hint">Hasil: <b>my-portfolio.vercel.app</b></div></div>
@@ -1289,7 +823,7 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         <div class="result-box" id="vc-result" style="display:none"></div>
         ${pv('▲','URL hasil muncul di sini','Contoh: nama-project.vercel.app')}`
     },
-    { id: 'netlify', num: '18', tag: 'Publisher', title: 'Netlify Quick Publish',
+    { id: 'netlify', num: '07', tag: 'Publisher', title: 'Netlify Quick Publish',
       desc: 'Publish HTML kamu ke Netlify dalam 1 klik. Hasil: nama.netlify.app',
       body: `
         <div class="field"><label>Nama Site</label><input id="nt-name" class="input" type="text" placeholder="my-portfolio" /><div class="hint">Hasil: <b>my-portfolio.netlify.app</b></div></div>
@@ -1314,27 +848,18 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
         <div class="result-box" id="nt-result" style="display:none"></div>
         ${pv('NL','URL hasil muncul di sini','Contoh: nama-site.netlify.app')}`
     },
-    { id: 'stalk-tiktok', num: '19', tag: 'Stalker', title: 'TikTok Stalker',
+    { id: 'stalk-tiktok', num: '08', tag: 'Stalker', title: 'TikTok Stalker',
       desc: 'Lihat detail profil TikTok berdasarkan username.',
       body: `
         <div class="field"><label>Username TikTok</label><input id="stt-user" class="input" type="text" placeholder="@username" /></div>
         <button class="btn-submit" id="stt-btn" data-handler="stalk-tiktok"><span>Cari Profil</span></button>
         <div class="result-box" id="stt-result" style="display:none"></div>
         ${pv('@','Hasil profil muncul di sini','Avatar, nickname, bio, followers.')}`
-    },
-    { id: 'stalk-ff', num: '20', tag: 'Stalker', title: 'Free Fire Stalker',
-      desc: 'Cek profil player Free Fire berdasarkan UID.',
-      body: `
-        <div class="field"><label>UID Player</label><input id="sff-uid" class="input" type="text" placeholder="Contoh: 1234567890" /></div>
-        <div class="field"><label>Region</label><select id="sff-region" class="select"><option>Indonesia (ID)</option><option>Malaysia (MY)</option><option>Singapore (SG)</option><option>Brazil (BR)</option><option>India (IND)</option></select></div>
-        <button class="btn-submit" id="sff-btn" data-handler="stalk-ff"><span>Cek Profil</span></button>
-        <div class="result-box" id="sff-result" style="display:none"></div>
-        ${pv('FF','Hasil profil muncul di sini','Nickname, level, rank, guild.')}`
     }
   ];
 
   const grid = document.getElementById('toolsGrid');
-  TOOLS.slice(0, 19).forEach(t => {
+  TOOLS.forEach(t => {
     const el = document.createElement('article');
     el.className = 'tool-card';
     el.setAttribute('data-tool', t.id);
@@ -1387,16 +912,6 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
     if (btn) {
       btn.addEventListener('click', () => {
         if (SERVER_HANDLERS[key]) return SERVER_HANDLERS[key](btn);
-        switch (key) {
-          case 'imgbase64': runImageBase64(); break;
-          case 'qr': runQR(); break;
-          case 'password': runPassword(); break;
-          case 'json': runJSON(); break;
-          case 'palette': runPalette(); break;
-          case 'uuid': runUUID(); break;
-          case 'markdown': runMarkdown(); break;
-          case 'speedtest': runSpeedTest(); break;
-        }
       });
     }
   }
@@ -1409,15 +924,10 @@ input[type="color"].input { padding: 4px; height: 44px; cursor: pointer; }
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  document.querySelector('.featured').addEventListener('click', e => {
-    if (e.target.closest('a')) e.preventDefault();
-    openTool('stalk-ff');
-  });
-
   window.FT = { ui: { openTool, closeModal, toast }, api: API };
 
 })();
 </script>
 
 </body>
-  </html>
+</html>
