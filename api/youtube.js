@@ -1,26 +1,11 @@
 /* ============================================================
    FORTECH FIRST TOOLS — API: YouTube Downloader
-   Client: ANDROID + fallback TV_EMBEDDED untuk age-gate
+   Endpoint : POST /api/youtube
+   Body     : { url, format }
+   Provider : id.ytmp3.mobi (backend scrape)
    ============================================================ */
 
-const INNERTUBE_KEY = 'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w';
-
-/* Client configs */
-const CLIENTS = {
-  android: {
-    clientName: 'ANDROID',
-    clientNameId: '3',
-    clientVersion: '20.10.38',
-    androidSdkVersion: 30,
-    userAgent: 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip'
-  },
-  tv: {
-    clientName: 'TVHTML5_SIMPLY_EMBEDDED_PLAYER',
-    clientNameId: '85',
-    clientVersion: '2.0',
-    userAgent: 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version'
-  }
-};
+const MAX_POLLS = 50;
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,224 +15,128 @@ function setCors(res) {
 }
 
 function extractVideoId(url) {
-  const patterns = [
-    /(?:youtube\.com\/watch\?(?:.*&)?v=)([A-Za-z0-9_-]{11})/,
-    /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
-    /(?:youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/,
-    /(?:youtube\.com\/live\/)([A-Za-z0-9_-]{11})/
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
+  if (!url) return null;
+  let match = null;
+  if (url.includes('youtube.com/shorts/') || url.includes('youtu.be/')) {
+    match = /\/([a-zA-Z0-9\-_]{11})/.exec(url);
+  } else if (url.includes('youtube.com')) {
+    match = /v=([a-zA-Z0-9\-_]{11})/.exec(url);
+  } else {
+    match = /[a-zA-Z0-9\-_]{11}/.exec(url);
   }
-  return null;
+  return match ? match[1] : null;
 }
 
-function parseFormat(str) {
-  const s = String(str || '').toLowerCase();
-  const isAudio = s.includes('mp3') || s.includes('audio');
-  const m = s.match(/(\d{3,4})p/);
-  const quality = m ? parseInt(m[1], 10) : 720;
-  return { isAudio, quality };
-}
+async function scrapeYtmp3(youtubeUrl, format) {
+  const videoId = extractVideoId(youtubeUrl);
+  if (!videoId) throw new Error('URL YouTube tidak valid.');
 
-function fmtDuration(sec) {
-  const s = parseInt(sec, 10) || 0;
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  const pad = n => String(n).padStart(2, '0');
-  return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`;
-}
-
-async function fetchPlayerWithClient(videoId, clientKey, cookie) {
-  const c = CLIENTS[clientKey];
-  if (!c) throw new Error('Unknown client: ' + clientKey);
-
-  const url = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}&prettyPrint=false`;
-
-  const payload = {
-    context: {
-      client: {
-        clientName: c.clientName,
-        clientVersion: c.clientVersion,
-        hl: 'en',
-        timeZone: 'UTC',
-        utcOffsetMinutes: 0
-      }
-    },
-    videoId,
-    contentCheckOk: true,
-    racyCheckOk: true
-  };
-
-  if (c.androidSdkVersion) {
-    payload.context.client.androidSdkVersion = c.androidSdkVersion;
+  const lowerFormat = String(format || 'mp3').toLowerCase();
+  if (lowerFormat !== 'mp3' && lowerFormat !== 'mp4') {
+    throw new Error('Format harus "mp3" atau "mp4".');
   }
 
   const headers = {
-    'Content-Type': 'application/json',
-    'User-Agent': c.userAgent,
-    'X-Goog-Api-Format-Version': '2',
-    'X-YouTube-Client-Name': c.clientNameId,
-    'X-YouTube-Client-Version': c.clientVersion
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Origin': 'https://id.ytmp3.mobi',
+    'Referer': 'https://id.ytmp3.mobi/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'cross-site'
   };
 
-  if (cookie) headers['Cookie'] = cookie;
+  const initUrl = `https://a.ymcdn.org/api/v1/init?p=y&23=1llum1n471&_=${Math.random()}`;
+  const initRes = await fetch(initUrl, { headers });
+  if (!initRes.ok) throw new Error(`Init gagal (HTTP ${initRes.status}).`);
+  const initJson = await initRes.json();
+  if (initJson.error > 0) throw new Error(`Init error: ${initJson.error}`);
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload)
-  });
+  let convertUrl = initJson.convertURL;
+  let convertRequestUrl = `${convertUrl}&v=${videoId}&f=${lowerFormat}&_=${Math.random()}`;
+  let convertJson;
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`InnerTube HTTP ${res.status}: ${errText.slice(0, 200)}`);
-  }
-  return await res.json();
-}
+  let redirectCount = 0;
+  while (redirectCount < 3) {
+    const convertRes = await fetch(convertRequestUrl, { headers });
+    if (!convertRes.ok) throw new Error(`Convert gagal (HTTP ${convertRes.status}).`);
+    convertJson = await convertRes.json();
+    if (convertJson.error > 0) throw new Error(`Convert error: ${convertJson.error}`);
 
-function pickStream(playerData, isAudio, targetQuality, videoOnly) {
-  const sd = playerData.streamingData || {};
-  const all = [];
-
-  if (Array.isArray(sd.formats)) {
-    for (const f of sd.formats) all.push({ ...f, hasVideo: true, hasAudio: true });
-  }
-  if (Array.isArray(sd.adaptiveFormats)) {
-    for (const f of sd.adaptiveFormats) {
-      const mime = f.mimeType || '';
-      all.push({
-        ...f,
-        hasVideo: mime.startsWith('video/'),
-        hasAudio: mime.startsWith('audio/')
-      });
+    if (convertJson.redirect > 0 && convertJson.redirectURL) {
+      convertRequestUrl = `${convertJson.redirectURL}&v=${videoId}&f=${lowerFormat}&_=${Math.random()}`;
+      redirectCount++;
+      continue;
     }
+    break;
   }
 
-  if (!all.length) return null;
+  const progressUrl = convertJson.progressURL;
+  const downloadUrl = convertJson.downloadURL;
+  let title = convertJson.title || '';
 
-  let candidates;
-  if (isAudio) {
-    candidates = all.filter(f => f.hasAudio && !f.hasVideo);
-  } else if (videoOnly) {
-    candidates = all.filter(f => f.hasVideo && !f.hasAudio);
-  } else {
-    candidates = all.filter(f => f.hasVideo && f.hasAudio);
-    if (!candidates.length) candidates = all.filter(f => f.hasVideo);
-  }
-  if (!candidates.length) return null;
+  if (!progressUrl) throw new Error('progressURL tidak ada di response.');
 
-  if (isAudio) {
-    return candidates.slice().sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+  let progress = 0;
+  let pollCount = 0;
+
+  while (progress < 3 && pollCount < MAX_POLLS) {
+    await new Promise(r => setTimeout(r, 1000));
+    pollCount++;
+
+    const progressRes = await fetch(progressUrl, { headers });
+    if (!progressRes.ok) throw new Error(`Progress gagal (HTTP ${progressRes.status}).`);
+    const progressJson = await progressRes.json();
+    if (progressJson.error > 0) throw new Error(`Progress error: ${progressJson.error}`);
+
+    progress = progressJson.progress;
+    if (progressJson.title) title = progressJson.title;
   }
 
-  const withHeight = candidates.filter(f => f.height);
-  if (withHeight.length) {
-    return withHeight.slice().sort(
-      (a, b) => Math.abs((a.height || 0) - targetQuality) - Math.abs((b.height || 0) - targetQuality)
-    )[0];
-  }
-  return candidates.slice().sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+  if (progress < 3) throw new Error('Konversi timeout (>50 detik).');
+
+  return { videoId, title, format: lowerFormat, downloadUrl };
 }
 
 module.exports = async function handler(req, res) {
   setCors(res);
-
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed. Gunakan POST.' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed.' });
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { url, format, type } = body;
+    const url = String(body.url || '').trim();
+    const format = String(body.format || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ success: false, error: 'URL YouTube wajib diisi.' });
-    }
-    const videoId = extractVideoId(url.trim());
-    if (!videoId) {
-      return res.status(400).json({ success: false, error: 'URL YouTube tidak valid.' });
-    }
+    if (!url) return res.status(400).json({ success: false, error: 'URL YouTube wajib diisi.' });
 
-    const { isAudio, quality } = parseFormat(format);
-    const videoOnly = String(type || '').toLowerCase().includes('video only');
+    const videoId = extractVideoId(url);
+    if (!videoId) return res.status(400).json({ success: false, error: 'URL YouTube tidak valid.' });
 
-    /* Cookie optional dari env var */
-    const cookie = process.env.YOUTUBE_COOKIE || null;
+    const fmt = format.includes('mp4') || format.includes('video') || format.includes('1080') || format.includes('720') || format.includes('480') ? 'mp4' : 'mp3';
 
-    /* Coba client ANDROID dulu, kalau LOGIN_REQUIRED fallback ke TV */
-    let playerData = null;
-    let usedClient = 'android';
-
-    try {
-      playerData = await fetchPlayerWithClient(videoId, 'android', cookie);
-      const st = (playerData.playabilityStatus || {}).status;
-      if (st && st !== 'OK' && /LOGIN_REQUIRED|AGE|CONTENT_CHECK/i.test(st)) {
-        console.log('[youtube] Android blocked, fallback ke TV_EMBEDDED...');
-        playerData = null;
-      }
-    } catch (e) {
-      console.error('[youtube] Android client error:', e.message);
-    }
-
-    if (!playerData) {
-      usedClient = 'tv';
-      playerData = await fetchPlayerWithClient(videoId, 'tv', cookie);
-    }
-
-    const status = playerData.playabilityStatus || {};
-    if (status.status !== 'OK') {
-      const map = {
-        LOGIN_REQUIRED: 'Video memerlukan login (kemungkinan age-restricted). Solusi: tambah cookie YouTube di env var Vercel.',
-        UNPLAYABLE: 'Video tidak bisa diputar.',
-        ERROR: 'Video tidak ditemukan atau tidak tersedia.',
-        CONTENT_CHECK_REQUIRED: 'Video butuh verifikasi konten.'
-      };
-      return res.status(500).json({
-        success: false,
-        error: map[status.status] || ('Video tidak tersedia: ' + (status.reason || status.status))
-      });
-    }
-
-    const details = playerData.videoDetails || {};
-    const stream = pickStream(playerData, isAudio, quality, videoOnly);
-
-    if (!stream) {
-      return res.status(500).json({ success: false, error: 'Tidak ada format yang tersedia untuk permintaan ini.' });
-    }
-    if (!stream.url) {
-      return res.status(500).json({ success: false, error: 'URL download tidak tersedia. Coba format lain.' });
-    }
-
-    const thumbs = (details.thumbnail && details.thumbnail.thumbnails) || [];
-    const thumbnail = thumbs.length ? thumbs[thumbs.length - 1].url : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-    const mime = stream.mimeType || '';
+    console.log(`[youtube] ${videoId} → ${fmt}`);
+    const result = await scrapeYtmp3(url, fmt);
+    console.log(`[youtube] sukses: ${result.title} (${fmt})`);
 
     return res.status(200).json({
       success: true,
       data: {
-        title: details.title || '-',
-        author: details.author || '-',
-        duration: fmtDuration(details.lengthSeconds),
-        durationSeconds: parseInt(details.lengthSeconds, 10) || 0,
-        thumbnail,
-        videoId,
-        client: usedClient,
-        container: mime.includes('mp4') ? 'mp4' : mime.includes('webm') ? 'webm' : (isAudio ? 'audio' : 'mp4'),
-        quality: stream.qualityLabel || stream.quality || (isAudio ? 'audio' : 'video'),
-        size: stream.contentLength ? (parseInt(stream.contentLength, 10) / 1024 / 1024).toFixed(1) + ' MB' : null,
-        download: stream.url,
-        note: 'Link berlaku sementara (beberapa jam). Kalau expired, cari ulang.'
+        videoId: result.videoId,
+        title: result.title,
+        format: result.format,
+        download: result.downloadUrl,
+        thumbnail: `https://i.ytimg.com/vi/${result.videoId}/hqdefault.jpg`
       }
     });
-
   } catch (err) {
     const msg = (err && err.message) ? err.message : 'Terjadi kesalahan di server.';
-    console.error('[youtube] error:', msg, err && err.stack);
+    console.error('[youtube]', msg);
     return res.status(500).json({ success: false, error: msg });
   }
+};
+
+module.exports.config = {
+  api: { bodyParser: { sizeLimit: '1mb' } }
 };
